@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bluegrass Medicare — Client Record</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #d8eecb; font-family: Georgia, serif; padding: 30px 16px; }
+    .wrap { max-width: 780px; margin: 0 auto; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.10); }
+
+    .header { background: #2B4899; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+    .header img { height: 52px; width: auto; }
+    .header-title { color: #fff; font-size: 15px; font-weight: bold; border-left: 2px solid #6DB33F; padding-left: 16px; font-family: Georgia, serif; letter-spacing: 0.02em; }
+    .header-right { border-left: 2px solid #6DB33F; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; }
+    .header-status { font-size: 13px; font-family: Arial, sans-serif; color: #fff; min-height: 16px; transition: opacity 0.4s; font-weight: bold; }
+    .header-status.fade { opacity: 0; }
+    .header-status.error { color: #f4a0a0; }
+    .header-status.pulse-msg { animation: msgPulse 0.7s ease 3; }
+    @keyframes msgPulse {
+      0%   { opacity: 1; }
+      50%  { opacity: 0.2; }
+      100% { opacity: 1; }
+    }
+
+    .body { background: #eef7e8; border: 1px solid #c5dfa8; border-top: none; border-radius: 0 0 10px 10px; padding: 22px 26px; }
+
+    .section { margin-bottom: 20px; }
+    .section-label { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #2B4899; border-bottom: 1.5px solid #6DB33F; padding-bottom: 4px; margin-bottom: 12px; font-family: Arial, sans-serif; }
+
+    .row { display: grid; gap: 12px; margin-bottom: 10px; }
+    .row-2 { grid-template-columns: 1fr 1fr; }
+    .row-3 { grid-template-columns: 2fr 0.5fr 2fr; }
+    .row-zip { grid-template-columns: 2fr 1.2fr 0.9fr; }
+
+    label { font-size: 12px; color: #555; display: block; margin-bottom: 3px; font-family: Arial, sans-serif; }
+
+    input[type=text], input[type=date], select, textarea {
+      width: 100%; font-size: 14px; padding: 7px 10px;
+      border: 1px solid #b8d99a; border-radius: 6px;
+      background: #fff; color: #222; font-family: Arial, sans-serif;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: #2B4899; box-shadow: 0 0 0 2px rgba(43,72,153,0.15);
+    }
+    .mbi { font-family: 'Courier New', monospace; letter-spacing: 0.12em; text-transform: uppercase; }
+
+    .ac-wrap { position: relative; }
+    .ac-list { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #b8d99a; border-top: none; border-radius: 0 0 6px 6px; max-height: 160px; overflow-y: auto; z-index: 100; display: none; }
+    .ac-list.open { display: block; }
+    .ac-item { padding: 7px 10px; font-size: 13px; font-family: Arial, sans-serif; cursor: pointer; color: #222; }
+    .ac-item:hover, .ac-item.active { background: #dff0cc; color: #2B4899; }
+
+    .check-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 16px; }
+    .check-item { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #222; cursor: pointer; font-family: Arial, sans-serif; }
+    .check-item input[type=checkbox] { width: 15px; height: 15px; accent-color: #2B4899; cursor: pointer; flex-shrink: 0; }
+
+    .radio-row { display: flex; align-items: center; gap: 20px; margin-top: 6px; }
+    .radio-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #222; cursor: pointer; font-family: Arial, sans-serif; }
+    .radio-item input[type=radio] { accent-color: #2B4899; width: 15px; height: 15px; }
+
+    .conditional { margin-top: 8px; display: none; }
+    .conditional.show { display: block; }
+
+    .divider { border: none; border-top: 1px solid #c5dfa8; margin: 16px 0; }
+
+    .id-badge { font-size: 13px; color: #555; background: #fff; border: 1px solid #b8d99a; border-radius: 6px; padding: 7px 10px; font-family: Arial, sans-serif; }
+    .id-val { font-family: 'Courier New', monospace; font-weight: bold; color: #2B4899; }
+
+    /* Lookup bar */
+    .lookup-bar { display: flex; gap: 8px; margin-bottom: 18px; align-items: center; }
+    .lookup-bar input { flex: 1; }
+    .lookup-bar button { padding: 7px 18px; white-space: nowrap; }
+
+    textarea { resize: vertical; min-height: 80px; }
+
+    .btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; align-items: center; }
+    .btn-row-left { margin-right: auto; }
+    button { font-size: 13px; font-weight: bold; padding: 8px 24px; border-radius: 6px; cursor: pointer; border: 1px solid #b8d99a; background: #fff; color: #333; font-family: Arial, sans-serif; }
+    button:hover { background: #e8f5de; }
+    .btn-save { background: #2B4899; color: #fff; border-color: #2B4899; }
+    .btn-save:hover { background: #6DB33F; border-color: #6DB33F; color: #fff; }
+    .btn-save:disabled { background: #7a93c9; border-color: #7a93c9; cursor: not-allowed; }
+    .btn-exit { background: #fff; color: #888; border: 1px solid #ccc; }
+    .btn-exit:hover { background: #fdecea; color: #c0392b; border-color: #e0b0aa; }
+    .btn-delete { background: #fff; color: #888; border: 1px solid #ccc; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+    .btn-delete:hover { background: #fdecea; color: #c0392b; border-color: #e0b0aa; }
+    .confirm-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.35); z-index: 200; align-items: center; justify-content: center; }
+    .confirm-overlay.open { display: flex; }
+    .confirm-box { background: #fff; border-radius: 10px; padding: 28px 32px; max-width: 360px; width: 90%; box-shadow: 0 4px 24px rgba(0,0,0,0.18); text-align: center; font-family: Arial, sans-serif; }
+    .confirm-box h3 { color: #c0392b; font-size: 16px; margin-bottom: 10px; }
+    .confirm-box p { font-size: 13px; color: #444; margin-bottom: 20px; line-height: 1.5; }
+    .confirm-btns { display: flex; gap: 10px; justify-content: center; }
+    .confirm-yes { font-size: 13px; font-weight: bold; padding: 8px 24px; border-radius: 6px; cursor: pointer; background: #c0392b; color: #fff; border: none; }
+    .confirm-yes:hover { background: #a93226; }
+    .confirm-no { font-size: 13px; font-weight: bold; padding: 8px 24px; border-radius: 6px; cursor: pointer; background: #fff; color: #333; border: 1px solid #ccc; }
+    .confirm-no:hover { background: #f5f5f5; }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="header">
+    <img src="logo.png" alt="Bluegrass Medicare" />
+    <div class="header-right">
+      <div class="header-title">Client Record — Entry / Edit</div>
+      <div class="header-status" id="headerStatus">Ready for new client entry</div>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <div class="lookup-bar">
+      <input type="text" id="lookupInput" placeholder="Enter Client ID or Last Name to load existing record…" />
+      <button onclick="lookupClient()">Find Client</button>
+      <button onclick="clearForm()">New Client</button>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Client Information</div>
+      <div class="row row-2">
+        <div>
+          <label>Client ID (auto-generated on save)</label>
+          <div class="id-badge">ID: <span class="id-val new-record" id="clientId">New Record</span></div>
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="fldStatus">
+            <option value="">— Select —</option>
+            <option value="C">Client</option>
+            <option value="P">Prospect</option>
+            <option value="F">Former Client</option>
+            <option value="N">Not a Prospect</option>
+          </select>
+        </div>
+      </div>
+      <div class="row row-3">
+        <div><label>First Name</label><input type="text" id="fldFirstName" placeholder="First name" /></div>
+        <div><label>MI</label><input type="text" id="fldMI" placeholder="M" maxlength="1" /></div>
+        <div><label>Last Name</label><input type="text" id="fldLastName" placeholder="Last name" /></div>
+      </div>
+      <div class="row row-2">
+        <div><label>Cell Phone</label><input type="text" id="fldCell" placeholder="(000) 000-0000" oninput="formatPhone(this)" maxlength="14" /></div>
+        <div><label>Other Phone</label><input type="text" id="fldOtherPhone" placeholder="(000) 000-0000" oninput="formatPhone(this)" maxlength="14" /></div>
+      </div>
+      <div class="row">
+        <div><label>Address</label><input type="text" id="fldAddress" placeholder="Street address" /></div>
+      </div>
+      <div class="row row-zip">
+        <div>
+          <label>City</label>
+          <div class="ac-wrap">
+            <input type="text" id="cityInput" placeholder="City" autocomplete="off"
+              oninput="acSearch(this,'city')" onkeydown="acKey(event,'city')" onblur="acClose('city')" />
+            <div class="ac-list" id="cityList"></div>
+          </div>
+        </div>
+        <div>
+          <label>State</label>
+          <select id="fldState">
+            <option value="">— State —</option>
+            <option>AL</option><option>AK</option><option>AZ</option><option>AR</option><option>CA</option>
+            <option>CO</option><option>CT</option><option>DE</option><option>FL</option><option>GA</option>
+            <option>HI</option><option>ID</option><option>IL</option><option>IN</option><option>IA</option>
+            <option>KS</option><option selected>KY</option><option>LA</option><option>ME</option><option>MD</option>
+            <option>MA</option><option>MI</option><option>MN</option><option>MS</option><option>MO</option>
+            <option>MT</option><option>NE</option><option>NV</option><option>NH</option><option>NJ</option>
+            <option>NM</option><option>NY</option><option>NC</option><option>ND</option><option>OH</option>
+            <option>OK</option><option>OR</option><option>PA</option><option>RI</option><option>SC</option>
+            <option>SD</option><option>TN</option><option>TX</option><option>UT</option><option>VT</option>
+            <option>VA</option><option>WA</option><option>WV</option><option>WI</option><option>WY</option>
+          </select>
+        </div>
+        <div><label>Zip Code</label><input type="text" id="fldZip" placeholder="00000" maxlength="10" /></div>
+      </div>
+      <div class="row">
+        <div>
+          <label>County</label>
+          <div class="ac-wrap">
+            <input type="text" id="countyInput" placeholder="County" autocomplete="off"
+              oninput="acSearch(this,'county')" onkeydown="acKey(event,'county')" onblur="acClose('county')" />
+            <div class="ac-list" id="countyList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="section">
+      <div class="section-label">Method of Contact</div>
+      <div class="check-grid">
+        <label class="check-item"><input type="checkbox" id="chkSign" /> Sign</label>
+        <label class="check-item"><input type="checkbox" id="chkAdvertising" /> Advertising</label>
+        <label class="check-item"><input type="checkbox" id="chkWorkshop" /> Workshop</label>
+        <label class="check-item"><input type="checkbox" id="chkGoogle" /> Google Search</label>
+        <label class="check-item"><input type="checkbox" id="chkReferral" onchange="toggle('ref-block',this.checked)" /> Referral</label>
+        <label class="check-item"><input type="checkbox" id="chkCOI" onchange="toggle('coi-block',this.checked)" /> COI</label>
+      </div>
+      <div class="conditional" id="ref-block">
+        <div style="margin-top:8px;max-width:340px;">
+          <label>Referral Name</label>
+          <input type="text" id="fldReferralName" placeholder="Who referred this client?" />
+        </div>
+      </div>
+      <div class="conditional" id="coi-block">
+        <div style="margin-top:8px;max-width:340px;">
+          <label>COI Name</label>
+          <input type="text" id="fldCOIName" placeholder="Center of Influence name (accountant, attorney, etc.)" />
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="section">
+      <div class="section-label">Medicare &amp; Personal Details</div>
+      <div class="row row-2">
+        <div>
+          <label>Medicare Member Number (MBI)</label>
+          <input type="text" id="fldMBI" class="mbi" placeholder="XXXX-XXX-XXXX" maxlength="14" oninput="formatMBI(this)" />
+        </div>
+        <div><label>Date of Birth</label><input type="date" id="fldDOB" /></div>
+      </div>
+      <div class="row row-2">
+        <div><label>Medicare Part A Effective Date</label><input type="date" id="fldPartA" /></div>
+        <div><label>Medicare Part B Effective Date</label><input type="date" id="fldPartB" /></div>
+      </div>
+      <div class="row row-2">
+        <div><label>Client Since</label><input type="date" id="fldClientSince" /></div>
+        <div><label>Spouse Name</label><input type="text" id="fldSpouse" placeholder="Spouse full name" /></div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="section">
+      <div class="section-label">Employment</div>
+      <div class="row row-2">
+        <div>
+          <label>Retired?</label>
+          <div class="radio-row">
+            <label class="radio-item"><input type="radio" name="retired" id="retiredY" value="Y" /> Yes</label>
+            <label class="radio-item"><input type="radio" name="retired" id="retiredN" value="N" /> No</label>
+          </div>
+        </div>
+        <div><label>Company Name</label><input type="text" id="fldCompany" placeholder="Current or former employer" /></div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="section">
+      <div class="section-label">Notes</div>
+      <textarea id="fldNotes" placeholder="Enter any notes about this client…"></textarea>
+    </div>
+
+    <div id="saveStatus" style="text-align:right; font-size:13px; font-family:Arial,sans-serif; font-weight:bold; color:#2B4899; min-height:18px; margin-top:12px;"></div>
+
+    <div class="btn-row">
+      <div class="btn-row-left">
+        <button class="btn-delete" onclick="confirmDelete()">Delete</button>
+      </div>
+      <button class="btn-exit" onclick="clearForm()">Exit — Do Not Save</button>
+      <button class="btn-save" onclick="saveClient()">Save Client</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- Delete Confirmation Dialog -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <h3>Delete Client?</h3>
+    <p>Are you sure you want to delete this client record? This action cannot be undone.</p>
+    <div class="confirm-btns">
+      <button class="confirm-no" onclick="closeConfirm()">Cancel</button>
+      <button class="confirm-yes" onclick="doDelete()">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
+  const HEADERS = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': 'return=representation' };
+  let currentId = null;
+
+  function showStatus(msg, isError = false, persist = false) {
+    const top = document.getElementById('headerStatus');
+    if (top) {
+      top.textContent = msg;
+      top.className = 'header-status' + (isError ? ' error' : '');
+      void top.offsetWidth;
+      top.classList.add('pulse-msg');
+      top.addEventListener('animationend', () => top.classList.remove('pulse-msg'), { once: true });
+    }
+    if (!persist) {
+      setTimeout(() => { if (top) top.classList.add('fade'); }, 3500);
+    }
+  }
+
+  function collectForm() {
+    return {
+      status:              document.getElementById('fldStatus').value || null,
+      first_name:          document.getElementById('fldFirstName').value.trim(),
+      mi:                  document.getElementById('fldMI').value.trim() || null,
+      last_name:           document.getElementById('fldLastName').value.trim(),
+      cell_phone:          document.getElementById('fldCell').value.trim() || null,
+      other_phone:         document.getElementById('fldOtherPhone').value.trim() || null,
+      address:             document.getElementById('fldAddress').value.trim() || null,
+      city:                document.getElementById('cityInput').value.trim() || null,
+      state:               document.getElementById('fldState').value || null,
+      zip:                 document.getElementById('fldZip').value.trim() || null,
+      county:              document.getElementById('countyInput').value.trim() || null,
+      contact_sign:        document.getElementById('chkSign').checked,
+      contact_advertising: document.getElementById('chkAdvertising').checked,
+      contact_workshop:    document.getElementById('chkWorkshop').checked,
+      contact_google:      document.getElementById('chkGoogle').checked,
+      contact_referral:    document.getElementById('chkReferral').checked,
+      contact_coi:         document.getElementById('chkCOI').checked,
+      referral_name:       document.getElementById('fldReferralName').value.trim() || null,
+      coi_name:            document.getElementById('fldCOIName').value.trim() || null,
+      mbi:                 document.getElementById('fldMBI').value.trim() || null,
+      dob:                 document.getElementById('fldDOB').value || null,
+      part_a_date:         document.getElementById('fldPartA').value || null,
+      part_b_date:         document.getElementById('fldPartB').value || null,
+      client_since:        document.getElementById('fldClientSince').value || null,
+      spouse_name:         document.getElementById('fldSpouse').value.trim() || null,
+      retired:             document.querySelector('input[name=retired]:checked')?.value === 'Y',
+      work_company:        document.getElementById('fldCompany').value.trim() || null,
+      notes:               document.getElementById('fldNotes').value.trim() || null
+    };
+  }
+
+  function populateForm(r) {
+    currentId = r.id;
+    const idEl = document.getElementById('clientId');
+    idEl.textContent = r.id;
+    idEl.className = 'id-val';
+    document.getElementById('fldStatus').value    = r.status || '';
+    document.getElementById('fldFirstName').value = r.first_name || '';
+    document.getElementById('fldMI').value        = r.mi || '';
+    document.getElementById('fldLastName').value  = r.last_name || '';
+    document.getElementById('fldCell').value      = r.cell_phone || '';
+    document.getElementById('fldOtherPhone').value= r.other_phone || '';
+    document.getElementById('fldAddress').value   = r.address || '';
+    document.getElementById('cityInput').value    = r.city || '';
+    document.getElementById('fldState').value     = r.state || 'KY';
+    document.getElementById('fldZip').value       = r.zip || '';
+    document.getElementById('countyInput').value  = r.county || '';
+    document.getElementById('chkSign').checked        = !!r.contact_sign;
+    document.getElementById('chkAdvertising').checked = !!r.contact_advertising;
+    document.getElementById('chkWorkshop').checked    = !!r.contact_workshop;
+    document.getElementById('chkGoogle').checked      = !!r.contact_google;
+    document.getElementById('chkReferral').checked    = !!r.contact_referral;
+    document.getElementById('chkCOI').checked         = !!r.contact_coi;
+    toggle('ref-block', !!r.contact_referral);
+    toggle('coi-block', !!r.contact_coi);
+    document.getElementById('fldReferralName').value = r.referral_name || '';
+    document.getElementById('fldCOIName').value      = r.coi_name || '';
+    document.getElementById('fldMBI').value          = r.mbi || '';
+    document.getElementById('fldDOB').value          = r.dob || '';
+    document.getElementById('fldPartA').value        = r.part_a_date || '';
+    document.getElementById('fldPartB').value        = r.part_b_date || '';
+    document.getElementById('fldClientSince').value  = r.client_since || '';
+    document.getElementById('fldSpouse').value       = r.spouse_name || '';
+    if (r.retired !== null) document.getElementById(r.retired ? 'retiredY' : 'retiredN').checked = true;
+    document.getElementById('fldCompany').value = r.work_company || '';
+    document.getElementById('fldNotes').value   = r.notes || '';
+  }
+
+  async function saveClient() {
+    const data = collectForm();
+    if (!data.first_name || !data.last_name) { showStatus('First Name and Last Name are required.', true, true); return; }
+    const btn = document.querySelector('.btn-save');
+    btn.textContent = 'Saving…'; btn.disabled = true;
+    showStatus('Saving Record…', false, true);
+    try {
+      const url    = currentId ? `${SUPABASE_URL}/rest/v1/clients?id=eq.${currentId}` : `${SUPABASE_URL}/rest/v1/clients`;
+      const method = currentId ? 'PATCH' : 'POST';
+      const res    = await fetch(url, { method, headers: HEADERS, body: JSON.stringify(data) });
+      const text   = await res.text();
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
+      let savedId = currentId;
+      if (!currentId) { try { const r = JSON.parse(text); if (r.length > 0) savedId = r[0].id; } catch(e) {} }
+      // Rolling ellipsis at bottom near Save button
+      let dots = 0;
+      const topEl = document.getElementById('headerStatus');
+      const botEl = document.getElementById('saveStatus');
+      if (topEl) { topEl.className = 'header-status'; topEl.textContent = 'Saving Record'; }
+      if (botEl) { botEl.style.color = '#2B4899'; botEl.textContent = 'Saving Record'; }
+      const roll = setInterval(() => {
+        dots = (dots + 1) % 4;
+        const txt = 'Saving Record' + '.'.repeat(dots);
+        if (topEl) topEl.textContent = txt;
+        if (botEl) botEl.textContent = txt;
+      }, 300);
+      setTimeout(() => {
+        clearInterval(roll);
+        const saved = `Record Saved (ID: ${savedId})`;
+        if (topEl) { topEl.className = 'header-status'; topEl.textContent = saved; }
+        if (botEl) { botEl.style.color = '#4a9e2a'; botEl.textContent = saved; }
+        setTimeout(() => {
+          if (botEl) botEl.textContent = '';
+          clearForm();
+          document.getElementById('fldFirstName').focus();
+        }, 1500);
+      }, 1500);    } catch (e) {
+      showStatus('Save failed: ' + e.message, true, true);
+    } finally { btn.textContent = 'Save Client'; btn.disabled = false; }
+  }
+
+  async function lookupClient() {
+    const val = document.getElementById('lookupInput').value.trim();
+    if (!val) { showStatus('Enter a Client ID or Last Name to search.', true); return; }
+    const isId = /^\d+$/.test(val);
+    const url  = isId
+      ? `${SUPABASE_URL}/rest/v1/clients?id=eq.${val}&limit=1`
+      : `${SUPABASE_URL}/rest/v1/clients?last_name=ilike.${encodeURIComponent(val + '%')}&limit=10`;
+    try {
+      const res  = await fetch(url, { headers: HEADERS });
+      const rows = await res.json();
+      if (!rows.length) { showStatus('No client found.', true); return; }
+      if (rows.length === 1) {
+        populateForm(rows[0]);
+        document.getElementById('lookupInput').value = '';
+        showStatus(`Loaded: ${rows[0].first_name} ${rows[0].last_name} (ID: ${rows[0].id})`);
+      } else {
+        const pick   = rows.map(r => `${r.id} — ${r.first_name} ${r.last_name}`).join('\n');
+        const choice = prompt(`Multiple matches. Enter Client ID to load:\n\n${pick}`);
+        if (choice) {
+          const found = rows.find(r => String(r.id) === choice.trim());
+          if (found) { populateForm(found); document.getElementById('lookupInput').value = ''; showStatus(`Loaded: ${found.first_name} ${found.last_name} (ID: ${found.id})`); }
+          else showStatus('ID not in results.', true);
+        }
+      }
+    } catch (e) { showStatus('Lookup failed — check console.', true); }
+  }
+
+  function confirmDelete() {
+    if (!currentId) { showStatus('No client loaded to delete.', true); return; }
+    document.getElementById('confirmOverlay').classList.add('open');
+  }
+  function closeConfirm() { document.getElementById('confirmOverlay').classList.remove('open'); }
+  async function doDelete() {
+    closeConfirm();
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${currentId}`, { method: 'DELETE', headers: HEADERS });
+      if (!res.ok) throw new Error(await res.text());
+      showStatus('Client deleted.');
+      clearForm();
+    } catch (e) { showStatus('Delete failed — check console.', true); }
+  }
+
+  function clearForm() {
+    currentId = null;
+    const idEl = document.getElementById('clientId');
+    idEl.textContent = 'New Record';
+    idEl.className = 'id-val new-record';
+    void idEl.offsetWidth;
+    idEl.classList.add('pulse');
+    idEl.addEventListener('animationend', () => idEl.classList.remove('pulse'), { once: true });
+    document.getElementById('lookupInput').value = '';
+    document.querySelectorAll('input[type=text], input[type=date], textarea').forEach(el => el.value = '');
+    document.querySelectorAll('select').forEach(el => {
+      el.selectedIndex = 0;
+      if (el.id === 'fldState') el.value = 'KY';
+      if (el.id === 'fldStatus') el.value = 'C';
+    });
+    document.querySelectorAll('input[type=checkbox]').forEach(el => el.checked = false);
+    document.querySelectorAll('input[type=radio]').forEach(el => el.checked = false);
+    document.getElementById('ref-block').classList.remove('show');
+    document.getElementById('coi-block').classList.remove('show');
+    showStatus('Ready for new client entry', false, true);
+  }
+
+  function formatPhone(input) {
+    let d = input.value.replace(/\D/g,'').slice(0,10);
+    if (!d) { input.value = ''; return; }
+    if (d.length <= 3) input.value = '(' + d;
+    else if (d.length <= 6) input.value = '(' + d.slice(0,3) + ') ' + d.slice(3);
+    else input.value = '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);
+  }
+
+  function formatMBI(input) {
+    let v = input.value.replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,11);
+    let out = '';
+    for (let i = 0; i < v.length; i++) { if (i === 4 || i === 7) out += '-'; out += v[i]; }
+    input.value = out;
+  }
+
+  function toggle(id, show) { document.getElementById(id).classList.toggle('show', show); }
+
+  const KY_COUNTIES = [
+    'Adair','Allen','Anderson','Ballard','Barren','Bath','Bell','Boone','Bourbon','Boyd',
+    'Boyle','Bracken','Breathitt','Breckinridge','Bullitt','Butler','Caldwell','Calloway',
+    'Campbell','Carlisle','Carroll','Carter','Casey','Christian','Clark','Clay','Clinton',
+    'Crittenden','Cumberland','Daviess','Edmonson','Elliott','Estill','Fayette','Fleming',
+    'Floyd','Franklin','Fulton','Gallatin','Garrard','Grant','Graves','Grayson','Green',
+    'Greenup','Hancock','Hardin','Harlan','Harrison','Hart','Henderson','Henry','Hickman',
+    'Hopkins','Jackson','Jefferson','Jessamine','Johnson','Kenton','Knott','Knox','Larue',
+    'Laurel','Lawrence','Lee','Leslie','Letcher','Lewis','Lincoln','Livingston','Logan',
+    'Lyon','McCracken','McCreary','McLean','Madison','Magoffin','Marion','Marshall','Martin',
+    'Mason','Meade','Menifee','Mercer','Metcalfe','Monroe','Montgomery','Morgan','Muhlenberg',
+    'Nelson','Nicholas','Ohio','Oldham','Owen','Owsley','Pendleton','Perry','Pike','Powell',
+    'Pulaski','Robertson','Rockcastle','Rowan','Russell','Scott','Shelby','Simpson','Spencer',
+    'Taylor','Todd','Trigg','Trimble','Union','Warren','Washington','Wayne','Webster',
+    'Whitley','Wolfe','Woodford'
+  ];
+
+  const KY_CITIES = [
+    'Albany','Alexandria','Ashland','Bardstown','Beattyville','Berea','Bowling Green',
+    'Burkesville','Burlington','Cadiz','Campbellsville','Carrollton','Cold Spring',
+    'Columbia','Corbin','Covington','Cynthiana','Danville','Dayton','Dry Ridge',
+    'Edgewood','Elizabethtown','Elsmere','Eminence','Erlanger','Falmouth','Flemingsburg',
+    'Florence','Fort Mitchell','Fort Thomas','Frankfort','Georgetown','Glasgow','Grayson',
+    'Greensburg','Harlan','Harrodsburg','Hazard','Hebron','Henderson','Highland Heights',
+    'Hopkinsville','Independence','Jackson','Jamestown','Jeffersontown','La Grange',
+    'Lawrenceburg','Leitchfield','Lexington','Liberty','London','Louisville','Madisonville',
+    'Mayfield','Middlesboro','Monticello','Morehead','Morganfield','Mount Sterling',
+    'Mt. Washington','Murray','New Castle','Newport','Nicholasville','Owensboro','Owenton',
+    'Paducah','Paris','Pikeville','Prestonsburg','Princeton','Radcliff','Richmond',
+    'Russellville','Scottsville','Shelbyville','Shepherdsville','Shively','Somerset',
+    'Springfield','St. Matthews','Stanford','Taylorsville','Union','Versailles','Villa Hills',
+    'Waddy','Warsaw','Winchester','Williamsburg','Williamstown'
+  ];
+
+  const acState = { city: { idx: -1 }, county: { idx: -1 } };
+
+  function acSearch(input, type) {
+    const val = input.value.trim().toLowerCase();
+    const listEl = document.getElementById(type + 'List');
+    const data = type === 'city' ? KY_CITIES : KY_COUNTIES;
+    if (val.length < 1) { listEl.classList.remove('open'); return; }
+    const matches = data.filter(d => d.toLowerCase().startsWith(val)).slice(0, 8);
+    if (!matches.length) { listEl.classList.remove('open'); return; }
+    listEl.innerHTML = matches.map(m =>
+      `<div class="ac-item" data-val="${m}" onmousedown="acSelect('${type}','${m}')">${m}</div>`
+    ).join('');
+    acState[type].idx = -1;
+    listEl.classList.add('open');
+  }
+
+  function acSelect(type, val) {
+    document.getElementById(type + 'Input').value = val;
+    document.getElementById(type + 'List').classList.remove('open');
+  }
+
+  function acClose(type) {
+    setTimeout(() => document.getElementById(type + 'List').classList.remove('open'), 150);
+  }
+
+  function acKey(e, type) {
+    const listEl = document.getElementById(type + 'List');
+    const items = listEl.querySelectorAll('.ac-item');
+    if (!listEl.classList.contains('open') || !items.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      acState[type].idx = Math.min(acState[type].idx + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('active', i === acState[type].idx));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      acState[type].idx = Math.max(acState[type].idx - 1, 0);
+      items.forEach((el, i) => el.classList.toggle('active', i === acState[type].idx));
+    } else if (e.key === 'Enter' && acState[type].idx >= 0) {
+      e.preventDefault();
+      acSelect(type, items[acState[type].idx].dataset.val);
+    } else if (e.key === 'Escape') {
+      listEl.classList.remove('open');
+    }
+  }
+</script>
+
+</body>
+</html>
