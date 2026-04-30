@@ -44,15 +44,10 @@
     .header-status.fade { opacity: 0; }
     .header-status.error { color: #f4a0a0; }
     .header-status.pulse-msg { animation: msgPulse 0.7s ease 3; }
-    .header-status.flash-next { animation: flashNext 0.5s ease 6; color: #FFE066; }
     @keyframes msgPulse {
       0%   { opacity: 1; }
       50%  { opacity: 0.2; }
       100% { opacity: 1; }
-    }
-    @keyframes flashNext {
-      0%,100% { opacity: 1; text-shadow: 0 0 10px #FFE066; }
-      50%      { opacity: 0.05; text-shadow: none; }
     }
 
     /* ── BODY ── */
@@ -322,19 +317,23 @@
     <div class="section">
       <div class="section-label">Client Identification</div>
 
-      <!-- Search bar -->
-      <div style="margin-bottom:12px;">
+      <div class="row row-id">
         <div class="field">
-          <label for="clientSearch">Search by ID or Name</label>
+          <label for="clientId">Client ID <span style="color:#888;font-size:11px;">(type to search)</span></label>
           <div class="lookup-wrap">
-            <input type="text" id="clientSearch" placeholder="Type client ID or last name…" autocomplete="off" oninput="handleClientSearch(this.value)" />
+            <input type="text" id="clientId" placeholder="Enter ID or search by name…" autocomplete="off" oninput="handleClientSearch(this.value)" />
             <div class="lookup-results" id="lookupResults"></div>
+          </div>
+        </div>
+        <div class="field" style="padding-top:4px;">
+          <label>&nbsp;</label>
+          <div style="font-size:12px;color:#888;font-family:Arial,sans-serif;padding:8px 0;">
+            Name auto-fills from Client file
           </div>
         </div>
       </div>
 
-      <!-- Name row (auto-filled, read-only) -->
-      <div class="row row-3" style="margin-bottom:8px;">
+      <div class="row row-3">
         <div class="field">
           <label for="firstName">First Name</label>
           <input type="text" id="firstName" class="readonly-field" readonly placeholder="Auto-filled" />
@@ -348,23 +347,6 @@
           <input type="text" id="lastName" class="readonly-field" readonly placeholder="Auto-filled" />
         </div>
       </div>
-
-      <!-- Address confirmation (display-only, shown after lookup) -->
-      <div id="addrConfirm" style="display:none; margin-bottom:4px;">
-        <div style="display:grid; grid-template-columns:2fr 1fr 0.5fr 0.8fr 1.2fr; gap:8px; margin-bottom:4px;">
-          <input type="text" id="dispAddress" class="readonly-field" readonly placeholder="Address" />
-          <input type="text" id="dispCity"    class="readonly-field" readonly placeholder="City" />
-          <input type="text" id="dispState"   class="readonly-field" readonly placeholder="ST" />
-          <input type="text" id="dispZip"     class="readonly-field" readonly placeholder="Zip" />
-          <input type="text" id="dispCounty"  class="readonly-field" readonly placeholder="County" />
-        </div>
-        <div style="font-size:11px; color:#888; font-family:Arial,sans-serif; font-style:italic; margin-bottom:4px;">
-          Address shown for confirmation only — edit in Client file if needed.
-        </div>
-      </div>
-
-      <!-- Hidden client ID carrier -->
-      <input type="hidden" id="clientId" />
     </div>
 
     <!-- POLICY INFO -->
@@ -408,7 +390,6 @@
           <label><input type="radio" name="electionPeriod" value="SEP" /> SEP</label>
           <label><input type="radio" name="electionPeriod" value="ICEP" /> ICEP</label>
           <label><input type="radio" name="electionPeriod" value="IEP" /> IEP</label>
-          <label><input type="radio" name="electionPeriod" value="Other" /> Other</label>
         </div>
       </div>
 
@@ -536,11 +517,11 @@
 <script>
   // ── MOCK CLIENT DATA (replace with Supabase lookup later) ──
   const mockClients = [
-    { id: '100001', firstName: 'James',    mi: 'A', lastName: 'Smith',    address: '123 Main St',      city: 'Richmond',    state: 'KY', zip: '40475', county: 'Madison' },
-    { id: '100002', firstName: 'Mary',     mi: 'L', lastName: 'Johnson',  address: '456 Oak Ave',      city: 'Lexington',   state: 'KY', zip: '40502', county: 'Fayette' },
-    { id: '100003', firstName: 'Robert',   mi: 'T', lastName: 'Smith',    address: '789 Elm Rd',       city: 'Berea',       state: 'KY', zip: '40403', county: 'Madison' },
-    { id: '100004', firstName: 'Patricia', mi: '',  lastName: 'Williams', address: '321 Maple Dr',     city: 'Nicholasville',state:'KY', zip: '40356', county: 'Jessamine' },
-    { id: '100005', firstName: 'Linda',    mi: 'K', lastName: 'Brown',    address: '654 Walnut Blvd',  city: 'Winchester',  state: 'KY', zip: '40391', county: 'Clark' },
+    { id: '100001', firstName: 'James',   mi: 'A', lastName: 'Smith' },
+    { id: '100002', firstName: 'Mary',    mi: 'L', lastName: 'Johnson' },
+    { id: '100003', firstName: 'Robert',  mi: 'T', lastName: 'Smith' },
+    { id: '100004', firstName: 'Patricia',mi: '',  lastName: 'Williams' },
+    { id: '100005', firstName: 'Linda',   mi: 'K', lastName: 'Brown' },
   ];
 
   // ── DEFAULT DATE WRITTEN TO TODAY ──
@@ -550,81 +531,64 @@
     showStatus('Ready for new entry', false, true);
   });
 
-  // ── CLIENT SEARCH ──
+  // ── CLIENT SEARCH / LOOKUP ──
   function handleClientSearch(val) {
     val = val.trim();
     const resultsEl = document.getElementById('lookupResults');
-    if (!val) { resultsEl.classList.remove('open'); return; }
+
+    // Clear name fields if emptied
+    if (!val) {
+      clearNameFields();
+      resultsEl.classList.remove('open');
+      return;
+    }
 
     const lower = val.toLowerCase();
     const matches = mockClients.filter(c =>
-      c.id.startsWith(val) ||
+      c.id.includes(val) ||
       c.firstName.toLowerCase().includes(lower) ||
       c.lastName.toLowerCase().includes(lower)
     );
 
     if (matches.length === 0) {
       resultsEl.innerHTML = '<div class="lookup-item" style="color:#999;">No clients found</div>';
-    } else {
-      resultsEl.innerHTML = matches.map(c =>
-        `<div class="lookup-item" onclick="selectClient('${c.id}')">
-          <strong>${c.id}</strong> — ${c.firstName} ${c.mi ? c.mi + '.' : ''} ${c.lastName}
-          <span style="color:#888;font-size:12px;"> · ${c.city}, ${c.state}</span>
-        </div>`
-      ).join('');
+      resultsEl.classList.add('open');
+      clearNameFields();
+      return;
     }
-    resultsEl.classList.add('open');
-  }
 
-  function doSearch() {
-    handleClientSearch(document.getElementById('clientSearch').value);
+    resultsEl.innerHTML = matches.map(c =>
+      `<div class="lookup-item" onclick="selectClient('${c.id}')">
+        <strong>${c.id}</strong> — ${c.firstName} ${c.mi ? c.mi + '.' : ''} ${c.lastName}
+      </div>`
+    ).join('');
+    resultsEl.classList.add('open');
   }
 
   function selectClient(id) {
     const c = mockClients.find(x => x.id === id);
     if (!c) return;
-
-    // Store ID
     document.getElementById('clientId').value = c.id;
-
-    // Fill name fields
     document.getElementById('firstName').value = c.firstName;
-    document.getElementById('mi').value        = c.mi;
-    document.getElementById('lastName').value  = c.lastName;
+    document.getElementById('mi').value = c.mi;
+    document.getElementById('lastName').value = c.lastName;
+
     ['firstName','mi','lastName'].forEach(f => {
       const el = document.getElementById(f);
       el.classList.remove('readonly-field');
       el.classList.add('autofilled');
     });
 
-    // Show address confirmation
-    document.getElementById('dispAddress').value = c.address || '';
-    document.getElementById('dispCity').value    = c.city    || '';
-    document.getElementById('dispState').value   = c.state   || '';
-    document.getElementById('dispZip').value     = c.zip     || '';
-    document.getElementById('dispCounty').value  = c.county  || '';
-    document.getElementById('addrConfirm').style.display = 'block';
-
-    // Close dropdown, update search bar display
     document.getElementById('lookupResults').classList.remove('open');
-    document.getElementById('clientSearch').value = `${c.id} — ${c.firstName} ${c.mi ? c.mi + '. ' : ''}${c.lastName}`;
-
-    showStatus(`Client found: ${c.firstName} ${c.lastName}`, false, false);
-
-    // Jump focus to Policy Status
-    setTimeout(() => document.getElementById('policyStatus').focus(), 100);
   }
 
-  function clearClient() {
-    document.getElementById('clientSearch').value = '';
-    document.getElementById('clientId').value     = '';
-    document.getElementById('lookupResults').classList.remove('open');
-    clearNameFields();
-    document.getElementById('addrConfirm').style.display = 'none';
-    ['dispAddress','dispCity','dispState','dispZip','dispCounty'].forEach(id => {
-      document.getElementById(id).value = '';
+  function clearNameFields() {
+    ['firstName','mi','lastName'].forEach(f => {
+      const el = document.getElementById(f);
+      el.value = '';
+      el.classList.remove('autofilled');
+      el.classList.add('readonly-field');
     });
-    showStatus('Ready for new entry', false, true);
   }
 
   // Close dropdown when clicking outside
@@ -719,13 +683,10 @@
   }
 
   // ── SAVE ──
-  let lastSaved = null; // holds last saved record for Copy
-
   function saveRecord() {
     // Basic validation
     if (!document.getElementById('clientId').value.trim()) {
-      showStatus('Please search and select a client before saving.', true);
-      document.getElementById('clientSearch').focus();
+      showStatus('Please select a client before saving.', true);
       return;
     }
     if (!document.getElementById('broker').value) {
@@ -768,41 +729,26 @@
     };
 
     console.log('Transaction record:', record);
-    showStatus('Transaction saved successfully!', false, true);
+    showStatus('Transaction saved successfully!', false, false);
 
-    // Show Copy This Record button — stays until Copy or Exit is pressed
+    // Show Copy This Record button
     document.getElementById('btnCopy').classList.add('visible');
-  }
 
-  function clearNameFields() {
-    ['firstName','mi','lastName'].forEach(f => {
-      const el = document.getElementById(f);
-      el.value = '';
-      el.classList.remove('autofilled');
-      el.classList.add('readonly-field');
-    });
+    // Reset form after brief delay
+    setTimeout(() => {
+      resetForm();
+    }, 2000);
   }
 
   // ── RESET FORM ──
   function resetForm() {
-    // Clear search bar and client ID
-    document.getElementById('clientSearch').value = '';
-    document.getElementById('clientId').value = '';
-    document.getElementById('lookupResults').classList.remove('open');
-    clearNameFields();
-
-    // Hide address confirmation
-    document.getElementById('addrConfirm').style.display = 'none';
-    ['dispAddress','dispCity','dispState','dispZip','dispCounty'].forEach(id => {
-      document.getElementById(id).value = '';
-    });
-
     // Clear text/date inputs
-    ['expectedCommission','bonusCommission',
+    ['clientId','expectedCommission','bonusCommission',
      'overrideAmount','brokerBonus','recurringCommission','recurringStartDate',
      'effectiveDate'].forEach(id => {
       document.getElementById(id).value = '';
     });
+    clearNameFields();
 
     // Reset date written to today
     document.getElementById('dateWritten').value = new Date().toISOString().split('T')[0];
@@ -827,50 +773,24 @@
     document.getElementById('btnCopy').classList.remove('visible');
 
     showStatus('Ready for new entry', false, true);
-    document.getElementById('clientSearch').focus();
   }
 
   // ── COPY RECORD ──
-  // Keeps: everything above commissions including client, policy details
-  // Clears: all commission fields only
+  // Keeps all fields populated except Client ID/name — user picks a new client
   function copyRecord() {
-    // Zero out all commission fields
-    ['expectedCommission','bonusCommission','overrideAmount',
-     'brokerBonus','recurringCommission'].forEach(id => {
-      document.getElementById(id).value = '';
-    });
-    document.getElementById('recurringStartDate').value = '';
-
-    // Reset Date Written to today
+    clearNameFields();
+    document.getElementById('clientId').value = '';
+    document.getElementById('lookupResults').classList.remove('open');
+    // Date Written resets to today
     document.getElementById('dateWritten').value = new Date().toISOString().split('T')[0];
-
-    // Hide copy button
     document.getElementById('btnCopy').classList.remove('visible');
-
-    // Flash "Ready for next entry" prominently in header
-    const top = document.getElementById('headerStatus');
-    const bot = document.getElementById('bottomStatus');
-    top.textContent = '★  Ready for your next entry  ★';
-    top.className = 'header-status flash-next';
-    top.addEventListener('animationend', () => {
-      top.className = 'header-status';
-      top.style.color = '#FFE066';
-    }, { once: true });
-
-    if (bot) {
-      bot.textContent = 'Commissions cleared — all other fields kept';
-      bot.style.color = '#2B7A0B';
-      bot.style.opacity = '1';
-    }
-
-    // Cursor back to search so they can swap client if needed
-    document.getElementById('clientSearch').focus();
+    showStatus('Record copied — select a new client to continue.', false, true);
+    document.getElementById('clientId').focus();
   }
 
   // ── EXIT ──
   function exitNoChange() {
     if (confirm('Exit without saving? Any unsaved data will be lost.')) {
-      document.getElementById('btnCopy').classList.remove('visible');
       showStatus('Exited without saving.', false, false);
       setTimeout(resetForm, 1500);
     }
