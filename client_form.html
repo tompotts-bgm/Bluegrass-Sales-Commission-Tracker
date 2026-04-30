@@ -11,17 +11,11 @@
 
     .header { background: #2B4899; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
     .header img { height: 52px; width: auto; }
-    .header-title { color: #fff; font-size: 15px; font-weight: bold; border-left: 2px solid #6DB33F; padding-left: 16px; font-family: Georgia, serif; letter-spacing: 0.02em; }
     .header-right { border-left: 2px solid #6DB33F; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; }
-    .header-status { font-size: 13px; font-family: Arial, sans-serif; color: #fff; min-height: 16px; transition: opacity 0.4s; font-weight: bold; }
+    .header-title { color: #fff; font-size: 15px; font-weight: bold; font-family: Georgia, serif; letter-spacing: 0.02em; }
+    .header-status { font-size: 12px; font-family: Arial, sans-serif; color: #6DB33F; min-height: 16px; transition: opacity 0.4s; }
     .header-status.fade { opacity: 0; }
     .header-status.error { color: #f4a0a0; }
-    .header-status.pulse-msg { animation: msgPulse 0.7s ease 3; }
-    @keyframes msgPulse {
-      0%   { opacity: 1; }
-      50%  { opacity: 0.2; }
-      100% { opacity: 1; }
-    }
 
     .body { background: #eef7e8; border: 1px solid #c5dfa8; border-top: none; border-radius: 0 0 10px 10px; padding: 22px 26px; }
 
@@ -66,25 +60,34 @@
 
     .id-badge { font-size: 13px; color: #555; background: #fff; border: 1px solid #b8d99a; border-radius: 6px; padding: 7px 10px; font-family: Arial, sans-serif; }
     .id-val { font-family: 'Courier New', monospace; font-weight: bold; color: #2B4899; }
+    .id-val.new-record { color: #4a9e2a; }
+    .id-val.pulse { animation: badgePulse 0.8s ease 3; }
+    @keyframes badgePulse {
+      0%   { color: #4a9e2a; text-shadow: none; }
+      50%  { color: #fff; text-shadow: 0 0 8px #6DB33F, 0 0 16px #6DB33F; }
+      100% { color: #4a9e2a; text-shadow: none; }
+    }
+
+    textarea { resize: vertical; min-height: 80px; }
+
+    .btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; align-items: center; }
+    .btn-row-left { margin-right: auto; }
+    button { font-size: 13px; font-weight: bold; padding: 8px 24px; border-radius: 6px; cursor: pointer; border: 1px solid #b8d99a; background: #fff; color: #333; font-family: Arial, sans-serif; transition: background 0.15s; }
+    button:hover { background: #e8f5de; }
+    .btn-save { background: #2B4899; color: #fff; border-color: #2B4899; }
+    .btn-save:hover { background: #6DB33F; border-color: #6DB33F; color: #fff; }
+    .btn-save:disabled { background: #7a93c9; border-color: #7a93c9; cursor: not-allowed; }
+    .btn-delete { background: #fff; color: #888; border: 1px solid #ccc; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+    .btn-delete:hover { background: #fdecea; color: #c0392b; border-color: #e0b0aa; }
 
     /* Lookup bar */
     .lookup-bar { display: flex; gap: 8px; margin-bottom: 18px; align-items: center; }
     .lookup-bar input { flex: 1; }
     .lookup-bar button { padding: 7px 18px; white-space: nowrap; }
 
-    textarea { resize: vertical; min-height: 80px; }
 
-    .btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; align-items: center; }
-    .btn-row-left { margin-right: auto; }
-    button { font-size: 13px; font-weight: bold; padding: 8px 24px; border-radius: 6px; cursor: pointer; border: 1px solid #b8d99a; background: #fff; color: #333; font-family: Arial, sans-serif; }
-    button:hover { background: #e8f5de; }
-    .btn-save { background: #2B4899; color: #fff; border-color: #2B4899; }
-    .btn-save:hover { background: #6DB33F; border-color: #6DB33F; color: #fff; }
-    .btn-save:disabled { background: #7a93c9; border-color: #7a93c9; cursor: not-allowed; }
-    .btn-exit { background: #fff; color: #888; border: 1px solid #ccc; }
-    .btn-exit:hover { background: #fdecea; color: #c0392b; border-color: #e0b0aa; }
-    .btn-delete { background: #fff; color: #888; border: 1px solid #ccc; transition: background 0.15s, color 0.15s, border-color 0.15s; }
-    .btn-delete:hover { background: #fdecea; color: #c0392b; border-color: #e0b0aa; }
+
+    /* Confirm overlay */
     .confirm-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.35); z-index: 200; align-items: center; justify-content: center; }
     .confirm-overlay.open { display: flex; }
     .confirm-box { background: #fff; border-radius: 10px; padding: 28px 32px; max-width: 360px; width: 90%; box-shadow: 0 4px 24px rgba(0,0,0,0.18); text-align: center; font-family: Arial, sans-serif; }
@@ -110,9 +113,10 @@
 
   <div class="body">
 
+    <!-- Lookup bar for editing existing clients -->
     <div class="lookup-bar">
       <input type="text" id="lookupInput" placeholder="Enter Client ID or Last Name to load existing record…" />
-      <button onclick="lookupClient()">Find Client</button>
+      <button onclick="lookupClient()">Load Client</button>
       <button onclick="clearForm()">New Client</button>
     </div>
 
@@ -121,7 +125,7 @@
       <div class="row row-2">
         <div>
           <label>Client ID (auto-generated on save)</label>
-          <div class="id-badge">ID: <span class="id-val new-record" id="clientId">New Record</span></div>
+          <div class="id-badge">ID: <span class="id-val" id="clientId">—</span></div>
         </div>
         <div>
           <label>Status</label>
@@ -183,6 +187,10 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <div style="display:flex; justify-content:center; margin: 14px 0 4px 0;">
+      <button class="btn-save" onclick="saveAndRecordSale()">Save &amp; Record Sale</button>
     </div>
 
     <hr class="divider" />
@@ -255,13 +263,11 @@
       <textarea id="fldNotes" placeholder="Enter any notes about this client…"></textarea>
     </div>
 
-    <div id="saveStatus" style="text-align:right; font-size:13px; font-family:Arial,sans-serif; font-weight:bold; color:#2B4899; min-height:18px; margin-top:12px;"></div>
-
     <div class="btn-row">
       <div class="btn-row-left">
         <button class="btn-delete" onclick="confirmDelete()">Delete</button>
       </div>
-      <button class="btn-exit" onclick="clearForm()">Exit — Do Not Save</button>
+      <button onclick="clearForm()">New Client</button>
       <button class="btn-save" onclick="saveClient()">Save Client</button>
     </div>
 
@@ -280,81 +286,88 @@
   </div>
 </div>
 
+
+
 <script>
+  // ── Supabase config ──────────────────────────────────────────────
   const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
-  const HEADERS = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': 'return=representation' };
-  let currentId = null;
+  const HEADERS = {
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY,
+    'Prefer': 'return=representation'
+  };
 
+  let currentId = null; // tracks loaded record
+
+  // ── Header status message ────────────────────────────────────────
+  let statusTimer = null;
   function showStatus(msg, isError = false, persist = false) {
-    const top = document.getElementById('headerStatus');
-    if (top) {
-      top.textContent = msg;
-      top.className = 'header-status' + (isError ? ' error' : '');
-      void top.offsetWidth;
-      top.classList.add('pulse-msg');
-      top.addEventListener('animationend', () => top.classList.remove('pulse-msg'), { once: true });
-    }
+    const el = document.getElementById('headerStatus');
+    el.textContent = msg;
+    el.className = 'header-status' + (isError ? ' error' : '');
+    if (statusTimer) clearTimeout(statusTimer);
     if (!persist) {
-      setTimeout(() => { if (top) top.classList.add('fade'); }, 3500);
+      statusTimer = setTimeout(() => { el.classList.add('fade'); }, 3500);
     }
   }
 
+  // ── Collect form data ────────────────────────────────────────────
   function collectForm() {
     return {
-      status:              document.getElementById('fldStatus').value || null,
-      first_name:          document.getElementById('fldFirstName').value.trim(),
-      mi:                  document.getElementById('fldMI').value.trim() || null,
-      last_name:           document.getElementById('fldLastName').value.trim(),
-      cell_phone:          document.getElementById('fldCell').value.trim() || null,
-      other_phone:         document.getElementById('fldOtherPhone').value.trim() || null,
-      address:             document.getElementById('fldAddress').value.trim() || null,
-      city:                document.getElementById('cityInput').value.trim() || null,
-      state:               document.getElementById('fldState').value || null,
-      zip:                 document.getElementById('fldZip').value.trim() || null,
-      county:              document.getElementById('countyInput').value.trim() || null,
-      contact_sign:        document.getElementById('chkSign').checked,
-      contact_advertising: document.getElementById('chkAdvertising').checked,
-      contact_workshop:    document.getElementById('chkWorkshop').checked,
-      contact_google:      document.getElementById('chkGoogle').checked,
-      contact_referral:    document.getElementById('chkReferral').checked,
-      contact_coi:         document.getElementById('chkCOI').checked,
-      referral_name:       document.getElementById('fldReferralName').value.trim() || null,
-      coi_name:            document.getElementById('fldCOIName').value.trim() || null,
-      mbi:                 document.getElementById('fldMBI').value.trim() || null,
-      dob:                 document.getElementById('fldDOB').value || null,
-      part_a_date:         document.getElementById('fldPartA').value || null,
-      part_b_date:         document.getElementById('fldPartB').value || null,
-      client_since:        document.getElementById('fldClientSince').value || null,
-      spouse_name:         document.getElementById('fldSpouse').value.trim() || null,
-      retired:             document.querySelector('input[name=retired]:checked')?.value === 'Y',
-      work_company:        document.getElementById('fldCompany').value.trim() || null,
-      notes:               document.getElementById('fldNotes').value.trim() || null
+      status:             document.getElementById('fldStatus').value || null,
+      first_name:         document.getElementById('fldFirstName').value.trim(),
+      mi:                 document.getElementById('fldMI').value.trim() || null,
+      last_name:          document.getElementById('fldLastName').value.trim(),
+      cell_phone:         document.getElementById('fldCell').value.trim() || null,
+      other_phone:        document.getElementById('fldOtherPhone').value.trim() || null,
+      address:            document.getElementById('fldAddress').value.trim() || null,
+      city:               document.getElementById('cityInput').value.trim() || null,
+      state:              document.getElementById('fldState').value || null,
+      zip:                document.getElementById('fldZip').value.trim() || null,
+      county:             document.getElementById('countyInput').value.trim() || null,
+      contact_sign:       document.getElementById('chkSign').checked,
+      contact_advertising:document.getElementById('chkAdvertising').checked,
+      contact_workshop:   document.getElementById('chkWorkshop').checked,
+      contact_google:     document.getElementById('chkGoogle').checked,
+      contact_referral:   document.getElementById('chkReferral').checked,
+      contact_coi:        document.getElementById('chkCOI').checked,
+      referral_name:      document.getElementById('fldReferralName').value.trim() || null,
+      coi_name:           document.getElementById('fldCOIName').value.trim() || null,
+      mbi:                document.getElementById('fldMBI').value.trim() || null,
+      dob:                document.getElementById('fldDOB').value || null,
+      part_a_date:        document.getElementById('fldPartA').value || null,
+      part_b_date:        document.getElementById('fldPartB').value || null,
+      client_since:       document.getElementById('fldClientSince').value || null,
+      spouse_name:        document.getElementById('fldSpouse').value.trim() || null,
+      retired:            document.querySelector('input[name=retired]:checked')?.value === 'Y',
+      work_company:       document.getElementById('fldCompany').value.trim() || null,
+      notes:              document.getElementById('fldNotes').value.trim() || null
     };
   }
 
+  // ── Populate form from a record ──────────────────────────────────
   function populateForm(r) {
     currentId = r.id;
-    const idEl = document.getElementById('clientId');
-    idEl.textContent = r.id;
-    idEl.className = 'id-val';
-    document.getElementById('fldStatus').value    = r.status || '';
-    document.getElementById('fldFirstName').value = r.first_name || '';
-    document.getElementById('fldMI').value        = r.mi || '';
-    document.getElementById('fldLastName').value  = r.last_name || '';
-    document.getElementById('fldCell').value      = r.cell_phone || '';
-    document.getElementById('fldOtherPhone').value= r.other_phone || '';
-    document.getElementById('fldAddress').value   = r.address || '';
-    document.getElementById('cityInput').value    = r.city || '';
-    document.getElementById('fldState').value     = r.state || 'KY';
-    document.getElementById('fldZip').value       = r.zip || '';
-    document.getElementById('countyInput').value  = r.county || '';
-    document.getElementById('chkSign').checked        = !!r.contact_sign;
-    document.getElementById('chkAdvertising').checked = !!r.contact_advertising;
-    document.getElementById('chkWorkshop').checked    = !!r.contact_workshop;
-    document.getElementById('chkGoogle').checked      = !!r.contact_google;
-    document.getElementById('chkReferral').checked    = !!r.contact_referral;
-    document.getElementById('chkCOI').checked         = !!r.contact_coi;
+    document.getElementById('clientId').textContent = r.id;
+    document.getElementById('fldStatus').value       = r.status || '';
+    document.getElementById('fldFirstName').value    = r.first_name || '';
+    document.getElementById('fldMI').value           = r.mi || '';
+    document.getElementById('fldLastName').value     = r.last_name || '';
+    document.getElementById('fldCell').value         = r.cell_phone || '';
+    document.getElementById('fldOtherPhone').value   = r.other_phone || '';
+    document.getElementById('fldAddress').value      = r.address || '';
+    document.getElementById('cityInput').value       = r.city || '';
+    document.getElementById('fldState').value        = r.state || 'KY';
+    document.getElementById('fldZip').value          = r.zip || '';
+    document.getElementById('countyInput').value     = r.county || '';
+    document.getElementById('chkSign').checked       = !!r.contact_sign;
+    document.getElementById('chkAdvertising').checked= !!r.contact_advertising;
+    document.getElementById('chkWorkshop').checked   = !!r.contact_workshop;
+    document.getElementById('chkGoogle').checked     = !!r.contact_google;
+    document.getElementById('chkReferral').checked   = !!r.contact_referral;
+    document.getElementById('chkCOI').checked        = !!r.contact_coi;
     toggle('ref-block', !!r.contact_referral);
     toggle('coi-block', !!r.contact_coi);
     document.getElementById('fldReferralName').value = r.referral_name || '';
@@ -365,61 +378,80 @@
     document.getElementById('fldPartB').value        = r.part_b_date || '';
     document.getElementById('fldClientSince').value  = r.client_since || '';
     document.getElementById('fldSpouse').value       = r.spouse_name || '';
-    if (r.retired !== null) document.getElementById(r.retired ? 'retiredY' : 'retiredN').checked = true;
-    document.getElementById('fldCompany').value = r.work_company || '';
-    document.getElementById('fldNotes').value   = r.notes || '';
+    if (r.retired !== null) {
+      document.getElementById(r.retired ? 'retiredY' : 'retiredN').checked = true;
+    }
+    document.getElementById('fldCompany').value      = r.work_company || '';
+    document.getElementById('fldNotes').value        = r.notes || '';
   }
 
-  async function saveClient() {
+  // ── Save (insert or update) ──────────────────────────────────────
+  async function saveClient(silent = false) {
     const data = collectForm();
-    if (!data.first_name || !data.last_name) { showStatus('First Name and Last Name are required.', true, true); return; }
+    if (!data.first_name || !data.last_name) {
+      showStatus('First Name and Last Name are required.', true, true);
+      return false;
+    }
+
     const btn = document.querySelector('.btn-save');
-    btn.textContent = 'Saving…'; btn.disabled = true;
-    showStatus('Saving Record…', false, true);
+    btn.textContent = 'Saving…';
+    btn.disabled = true;
+
     try {
-      const url    = currentId ? `${SUPABASE_URL}/rest/v1/clients?id=eq.${currentId}` : `${SUPABASE_URL}/rest/v1/clients`;
-      const method = currentId ? 'PATCH' : 'POST';
-      const res    = await fetch(url, { method, headers: HEADERS, body: JSON.stringify(data) });
-      const text   = await res.text();
+      let url, method;
+      if (currentId) {
+        url    = `${SUPABASE_URL}/rest/v1/clients?id=eq.${currentId}`;
+        method = 'PATCH';
+      } else {
+        url    = `${SUPABASE_URL}/rest/v1/clients`;
+        method = 'POST';
+      }
+
+      const res = await fetch(url, { method, headers: HEADERS, body: JSON.stringify(data) });
+      const text = await res.text();
+      console.log('Supabase response:', res.status, text);
+
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
+
       let savedId = currentId;
-      if (!currentId) { try { const r = JSON.parse(text); if (r.length > 0) savedId = r[0].id; } catch(e) {} }
-      // Rolling ellipsis at bottom near Save button
-      let dots = 0;
-      const topEl = document.getElementById('headerStatus');
-      const botEl = document.getElementById('saveStatus');
-      if (topEl) { topEl.className = 'header-status'; topEl.textContent = 'Saving Record'; }
-      if (botEl) { botEl.style.color = '#2B4899'; botEl.textContent = 'Saving Record'; }
-      const roll = setInterval(() => {
-        dots = (dots + 1) % 4;
-        const txt = 'Saving Record' + '.'.repeat(dots);
-        if (topEl) topEl.textContent = txt;
-        if (botEl) botEl.textContent = txt;
-      }, 300);
-      setTimeout(() => {
-        clearInterval(roll);
-        const saved = `Record Saved (ID: ${savedId})`;
-        if (topEl) { topEl.className = 'header-status'; topEl.textContent = saved; }
-        if (botEl) { botEl.style.color = '#4a9e2a'; botEl.textContent = saved; }
+      if (!currentId) {
+        try {
+          const result = JSON.parse(text);
+          if (result.length > 0) { savedId = result[0].id; currentId = savedId; }
+        } catch(e) { /* ignore parse error on update */ }
+      }
+
+      if (!silent) {
+        showStatus(`Record Saved${savedId ? ' (ID: ' + savedId + ')' : ''} — Ready for next entry`);
         setTimeout(() => {
-          if (botEl) botEl.textContent = '';
           clearForm();
-          document.getElementById('fldFirstName').focus();
-        }, 1500);
-      }, 1500);    } catch (e) {
+          document.getElementById('lookupInput').focus();
+        }, 2000);
+      }
+      return true;
+
+    } catch (e) {
+      console.error('Save error:', e);
       showStatus('Save failed: ' + e.message, true, true);
-    } finally { btn.textContent = 'Save Client'; btn.disabled = false; }
+      return false;
+    } finally {
+      btn.textContent = 'Save Client';
+      btn.disabled = false;
+    }
   }
 
+  // ── Lookup client by ID or last name ────────────────────────────
   async function lookupClient() {
     const val = document.getElementById('lookupInput').value.trim();
     if (!val) { showStatus('Enter a Client ID or Last Name to search.', true); return; }
+
     const isId = /^\d+$/.test(val);
     const url  = isId
       ? `${SUPABASE_URL}/rest/v1/clients?id=eq.${val}&limit=1`
       : `${SUPABASE_URL}/rest/v1/clients?last_name=ilike.${encodeURIComponent(val + '%')}&limit=10`;
+
     try {
-      const res  = await fetch(url, { headers: HEADERS });
+      const res  = await fetch(url, { headers: { ...HEADERS, 'Prefer': 'return=representation' } });
       const rows = await res.json();
       if (!rows.length) { showStatus('No client found.', true); return; }
       if (rows.length === 1) {
@@ -427,54 +459,79 @@
         document.getElementById('lookupInput').value = '';
         showStatus(`Loaded: ${rows[0].first_name} ${rows[0].last_name} (ID: ${rows[0].id})`);
       } else {
-        const pick   = rows.map(r => `${r.id} — ${r.first_name} ${r.last_name}`).join('\n');
-        const choice = prompt(`Multiple matches. Enter Client ID to load:\n\n${pick}`);
+        const pick = rows.map(r => `${r.id} — ${r.first_name} ${r.last_name}`).join('\n');
+        const choice = prompt(`Multiple matches found. Enter the Client ID to load:\n\n${pick}`);
         if (choice) {
           const found = rows.find(r => String(r.id) === choice.trim());
-          if (found) { populateForm(found); document.getElementById('lookupInput').value = ''; showStatus(`Loaded: ${found.first_name} ${found.last_name} (ID: ${found.id})`); }
-          else showStatus('ID not in results.', true);
+          if (found) {
+            populateForm(found);
+            document.getElementById('lookupInput').value = '';
+            showStatus(`Loaded: ${found.first_name} ${found.last_name} (ID: ${found.id})`);
+          } else showStatus('ID not in results.', true);
         }
       }
-    } catch (e) { showStatus('Lookup failed — check console.', true); }
+    } catch (e) {
+      console.error(e);
+      showStatus('Lookup failed — check console.', true);
+    }
   }
 
+  // ── Delete ───────────────────────────────────────────────────────
   function confirmDelete() {
     if (!currentId) { showStatus('No client loaded to delete.', true); return; }
     document.getElementById('confirmOverlay').classList.add('open');
   }
-  function closeConfirm() { document.getElementById('confirmOverlay').classList.remove('open'); }
+  function closeConfirm() {
+    document.getElementById('confirmOverlay').classList.remove('open');
+  }
   async function doDelete() {
     closeConfirm();
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${currentId}`, { method: 'DELETE', headers: HEADERS });
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${currentId}`, {
+        method: 'DELETE', headers: HEADERS
+      });
       if (!res.ok) throw new Error(await res.text());
       showStatus('Client deleted.');
       clearForm();
-    } catch (e) { showStatus('Delete failed — check console.', true); }
+    } catch (e) {
+      console.error(e);
+      showStatus('Delete failed — check console.', true);
+    }
   }
 
+  // ── Save and Record Sale ─────────────────────────────────────────
+  async function saveAndRecordSale() {
+    const saved = await saveClient(true);
+    if (!saved) return;
+    window.location.href = `transaction_entry.html?client_id=${currentId}`;
+  }
+
+  // ── Clear form for new entry ─────────────────────────────────────
   function clearForm() {
     currentId = null;
     const idEl = document.getElementById('clientId');
     idEl.textContent = 'New Record';
     idEl.className = 'id-val new-record';
+    // Trigger pulse — remove then re-add so it fires every time
     void idEl.offsetWidth;
     idEl.classList.add('pulse');
     idEl.addEventListener('animationend', () => idEl.classList.remove('pulse'), { once: true });
+
     document.getElementById('lookupInput').value = '';
     document.querySelectorAll('input[type=text], input[type=date], textarea').forEach(el => el.value = '');
     document.querySelectorAll('select').forEach(el => {
       el.selectedIndex = 0;
       if (el.id === 'fldState') el.value = 'KY';
-      if (el.id === 'fldStatus') el.value = 'C';
     });
     document.querySelectorAll('input[type=checkbox]').forEach(el => el.checked = false);
     document.querySelectorAll('input[type=radio]').forEach(el => el.checked = false);
     document.getElementById('ref-block').classList.remove('show');
     document.getElementById('coi-block').classList.remove('show');
     showStatus('Ready for new client entry', false, true);
+    document.getElementById('fldFirstName').focus();
   }
 
+  // ── Phone / MBI formatting ───────────────────────────────────────
   function formatPhone(input) {
     let d = input.value.replace(/\D/g,'').slice(0,10);
     if (!d) { input.value = ''; return; }
@@ -486,12 +543,23 @@
   function formatMBI(input) {
     let v = input.value.replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,11);
     let out = '';
-    for (let i = 0; i < v.length; i++) { if (i === 4 || i === 7) out += '-'; out += v[i]; }
+    for (let i = 0; i < v.length; i++) {
+      if (i === 4 || i === 7) out += '-';
+      out += v[i];
+    }
     input.value = out;
   }
 
-  function toggle(id, show) { document.getElementById(id).classList.toggle('show', show); }
+  function toggle(id, show) {
+    document.getElementById(id).classList.toggle('show', show);
+  }
 
+  // ── Init ─────────────────────────────────────────────────────────
+  const idEl = document.getElementById('clientId');
+  idEl.textContent = 'New Record';
+  idEl.className = 'id-val new-record';
+
+  // ── City / County autocomplete ───────────────────────────────────
   const KY_COUNTIES = [
     'Adair','Allen','Anderson','Ballard','Barren','Bath','Bell','Boone','Bourbon','Boyd',
     'Boyle','Bracken','Breathitt','Breckinridge','Bullitt','Butler','Caldwell','Calloway',
