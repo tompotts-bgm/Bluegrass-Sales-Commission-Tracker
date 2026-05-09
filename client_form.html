@@ -80,14 +80,10 @@
     .btn-delete { background: #fff; color: #888; border: 1px solid #ccc; transition: background 0.15s, color 0.15s, border-color 0.15s; }
     .btn-delete:hover { background: #fdecea; color: #c0392b; border-color: #e0b0aa; }
 
-    /* Lookup bar */
     .lookup-bar { display: flex; gap: 8px; margin-bottom: 18px; align-items: center; }
     .lookup-bar input { flex: 1; }
     .lookup-bar button { padding: 7px 18px; white-space: nowrap; }
 
-
-
-    /* Confirm overlay */
     .confirm-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.35); z-index: 200; align-items: center; justify-content: center; }
     .confirm-overlay.open { display: flex; }
     .confirm-box { background: #fff; border-radius: 10px; padding: 28px 32px; max-width: 360px; width: 90%; box-shadow: 0 4px 24px rgba(0,0,0,0.18); text-align: center; font-family: Arial, sans-serif; }
@@ -113,7 +109,6 @@
 
   <div class="body">
 
-    <!-- Lookup bar for editing existing clients -->
     <div class="lookup-bar">
       <input type="text" id="lookupInput" placeholder="Enter Client ID or Last Name to load existing record…" />
       <button onclick="lookupClient()">Load Client</button>
@@ -286,10 +281,7 @@
   </div>
 </div>
 
-
-
 <script>
-  // ── Supabase config ──────────────────────────────────────────────
   const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
   const HEADERS = {
@@ -299,9 +291,8 @@
     'Prefer': 'return=representation'
   };
 
-  let currentId = null; // tracks loaded record
+  let currentId = null;
 
-  // ── Header status message ────────────────────────────────────────
   let statusTimer = null;
   function showStatus(msg, isError = false, persist = false) {
     const el = document.getElementById('headerStatus');
@@ -313,79 +304,76 @@
     }
   }
 
-  // ── Collect form data ────────────────────────────────────────────
   function collectForm() {
     return {
-      status:             document.getElementById('fldStatus').value || null,
-      first_name:         document.getElementById('fldFirstName').value.trim(),
-      mi:                 document.getElementById('fldMI').value.trim() || null,
-      last_name:          document.getElementById('fldLastName').value.trim(),
-      cell_phone:         document.getElementById('fldCell').value.trim() || null,
-      other_phone:        document.getElementById('fldOtherPhone').value.trim() || null,
-      address:            document.getElementById('fldAddress').value.trim() || null,
-      city:               document.getElementById('cityInput').value.trim() || null,
-      state:              document.getElementById('fldState').value || null,
-      zip:                document.getElementById('fldZip').value.trim() || null,
-      county:             document.getElementById('countyInput').value.trim() || null,
-      contact_sign:       document.getElementById('chkSign').checked,
-      contact_advertising:document.getElementById('chkAdvertising').checked,
-      contact_workshop:   document.getElementById('chkWorkshop').checked,
-      contact_google:     document.getElementById('chkGoogle').checked,
-      contact_referral:   document.getElementById('chkReferral').checked,
-      contact_coi:        document.getElementById('chkCOI').checked,
-      referral_name:      document.getElementById('fldReferralName').value.trim() || null,
-      coi_name:           document.getElementById('fldCOIName').value.trim() || null,
-      mbi:                document.getElementById('fldMBI').value.trim() || null,
-      dob:                document.getElementById('fldDOB').value || null,
-      part_a_date:        document.getElementById('fldPartA').value || null,
-      part_b_date:        document.getElementById('fldPartB').value || null,
-      client_since:       document.getElementById('fldClientSince').value || null,
-      spouse_name:        document.getElementById('fldSpouse').value.trim() || null,
-      retired:            document.querySelector('input[name=retired]:checked')?.value === 'Y',
-      work_company:       document.getElementById('fldCompany').value.trim() || null,
-      notes:              document.getElementById('fldNotes').value.trim() || null
+      status:              document.getElementById('fldStatus').value || null,
+      first_name:          document.getElementById('fldFirstName').value.trim(),
+      mi:                  document.getElementById('fldMI').value.trim() || null,
+      last_name:           document.getElementById('fldLastName').value.trim(),
+      cell_phone:          document.getElementById('fldCell').value.trim() || null,
+      other_phone:         document.getElementById('fldOtherPhone').value.trim() || null,
+      address:             document.getElementById('fldAddress').value.trim() || null,
+      city:                document.getElementById('cityInput').value.trim() || null,
+      state:               document.getElementById('fldState').value || null,
+      zip:                 document.getElementById('fldZip').value.trim() || null,
+      county:              document.getElementById('countyInput').value.trim() || null,
+      contact_sign:        document.getElementById('chkSign').checked,
+      contact_advertising: document.getElementById('chkAdvertising').checked,
+      contact_workshop:    document.getElementById('chkWorkshop').checked,
+      contact_google:      document.getElementById('chkGoogle').checked,
+      contact_referral:    document.getElementById('chkReferral').checked,
+      contact_coi:         document.getElementById('chkCOI').checked,
+      referral_name:       document.getElementById('fldReferralName').value.trim() || null,
+      coi_name:            document.getElementById('fldCOIName').value.trim() || null,
+      mbi:                 document.getElementById('fldMBI').value.trim() || null,
+      dob:                 document.getElementById('fldDOB').value || null,
+      part_a_date:         document.getElementById('fldPartA').value || null,
+      part_b_date:         document.getElementById('fldPartB').value || null,
+      client_since:        document.getElementById('fldClientSince').value || null,
+      spouse_name:         document.getElementById('fldSpouse').value.trim() || null,
+      retired:             document.querySelector('input[name=retired]:checked')?.value === 'Y',
+      work_company:        document.getElementById('fldCompany').value.trim() || null,
+      notes:               document.getElementById('fldNotes').value.trim() || null
     };
   }
 
-  // ── Populate form from a record ──────────────────────────────────
   function populateForm(r) {
     currentId = r.id;
-    document.getElementById('clientId').textContent = r.id;
-    document.getElementById('fldStatus').value       = r.status || '';
-    document.getElementById('fldFirstName').value    = r.first_name || '';
-    document.getElementById('fldMI').value           = r.mi || '';
-    document.getElementById('fldLastName').value     = r.last_name || '';
-    document.getElementById('fldCell').value         = r.cell_phone || '';
-    document.getElementById('fldOtherPhone').value   = r.other_phone || '';
-    document.getElementById('fldAddress').value      = r.address || '';
-    document.getElementById('cityInput').value       = r.city || '';
-    document.getElementById('fldState').value        = r.state || 'KY';
-    document.getElementById('fldZip').value          = r.zip || '';
-    document.getElementById('countyInput').value     = r.county || '';
-    document.getElementById('chkSign').checked       = !!r.contact_sign;
-    document.getElementById('chkAdvertising').checked= !!r.contact_advertising;
-    document.getElementById('chkWorkshop').checked   = !!r.contact_workshop;
-    document.getElementById('chkGoogle').checked     = !!r.contact_google;
-    document.getElementById('chkReferral').checked   = !!r.contact_referral;
-    document.getElementById('chkCOI').checked        = !!r.contact_coi;
+    document.getElementById('clientId').textContent     = r.id;
+    document.getElementById('fldStatus').value          = r.status || '';
+    document.getElementById('fldFirstName').value       = r.first_name || '';
+    document.getElementById('fldMI').value              = r.mi || '';
+    document.getElementById('fldLastName').value        = r.last_name || '';
+    document.getElementById('fldCell').value            = r.cell_phone || '';
+    document.getElementById('fldOtherPhone').value      = r.other_phone || '';
+    document.getElementById('fldAddress').value         = r.address || '';
+    document.getElementById('cityInput').value          = r.city || '';
+    document.getElementById('fldState').value           = r.state || 'KY';
+    document.getElementById('fldZip').value             = r.zip || '';
+    document.getElementById('countyInput').value        = r.county || '';
+    document.getElementById('chkSign').checked          = !!r.contact_sign;
+    document.getElementById('chkAdvertising').checked   = !!r.contact_advertising;
+    document.getElementById('chkWorkshop').checked      = !!r.contact_workshop;
+    document.getElementById('chkGoogle').checked        = !!r.contact_google;
+    document.getElementById('chkReferral').checked      = !!r.contact_referral;
+    document.getElementById('chkCOI').checked           = !!r.contact_coi;
     toggle('ref-block', !!r.contact_referral);
     toggle('coi-block', !!r.contact_coi);
-    document.getElementById('fldReferralName').value = r.referral_name || '';
-    document.getElementById('fldCOIName').value      = r.coi_name || '';
-    document.getElementById('fldMBI').value          = r.mbi || '';
-    document.getElementById('fldDOB').value          = r.dob || '';
-    document.getElementById('fldPartA').value        = r.part_a_date || '';
-    document.getElementById('fldPartB').value        = r.part_b_date || '';
-    document.getElementById('fldClientSince').value  = r.client_since || '';
-    document.getElementById('fldSpouse').value       = r.spouse_name || '';
+    document.getElementById('fldReferralName').value    = r.referral_name || '';
+    document.getElementById('fldCOIName').value         = r.coi_name || '';
+    document.getElementById('fldMBI').value             = r.mbi || '';
+    document.getElementById('fldDOB').value             = r.dob || '';
+    document.getElementById('fldPartA').value           = r.part_a_date || '';
+    document.getElementById('fldPartB').value           = r.part_b_date || '';
+    document.getElementById('fldClientSince').value     = r.client_since || '';
+    document.getElementById('fldSpouse').value          = r.spouse_name || '';
     if (r.retired !== null) {
       document.getElementById(r.retired ? 'retiredY' : 'retiredN').checked = true;
     }
-    document.getElementById('fldCompany').value      = r.work_company || '';
-    document.getElementById('fldNotes').value        = r.notes || '';
+    document.getElementById('fldCompany').value         = r.work_company || '';
+    document.getElementById('fldNotes').value           = r.notes || '';
   }
 
-  // ── Save (insert or update) ──────────────────────────────────────
   async function saveClient(silent = false) {
     const data = collectForm();
     if (!data.first_name || !data.last_name) {
@@ -407,10 +395,8 @@
         method = 'POST';
       }
 
-      const res = await fetch(url, { method, headers: HEADERS, body: JSON.stringify(data) });
+      const res  = await fetch(url, { method, headers: HEADERS, body: JSON.stringify(data) });
       const text = await res.text();
-      console.log('Supabase response:', res.status, text);
-
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
 
       let savedId = currentId;
@@ -418,20 +404,16 @@
         try {
           const result = JSON.parse(text);
           if (result.length > 0) { savedId = result[0].id; currentId = savedId; }
-        } catch(e) { /* ignore parse error on update */ }
+        } catch(e) {}
       }
 
       if (!silent) {
         showStatus(`Record Saved${savedId ? ' (ID: ' + savedId + ')' : ''} — Ready for next entry`);
-        setTimeout(() => {
-          clearForm();
-          document.getElementById('lookupInput').focus();
-        }, 2000);
+        setTimeout(() => { clearForm(); document.getElementById('lookupInput').focus(); }, 2000);
       }
       return true;
 
     } catch (e) {
-      console.error('Save error:', e);
       showStatus('Save failed: ' + e.message, true, true);
       return false;
     } finally {
@@ -440,7 +422,6 @@
     }
   }
 
-  // ── Lookup client by ID or last name ────────────────────────────
   async function lookupClient() {
     const val = document.getElementById('lookupInput').value.trim();
     if (!val) { showStatus('Enter a Client ID or Last Name to search.', true); return; }
@@ -471,12 +452,10 @@
         }
       }
     } catch (e) {
-      console.error(e);
       showStatus('Lookup failed — check console.', true);
     }
   }
 
-  // ── Delete ───────────────────────────────────────────────────────
   function confirmDelete() {
     if (!currentId) { showStatus('No client loaded to delete.', true); return; }
     document.getElementById('confirmOverlay').classList.add('open');
@@ -494,25 +473,21 @@
       showStatus('Client deleted.');
       clearForm();
     } catch (e) {
-      console.error(e);
       showStatus('Delete failed — check console.', true);
     }
   }
 
-  // ── Save and Record Sale ─────────────────────────────────────────
   async function saveAndRecordSale() {
     const saved = await saveClient(true);
     if (!saved) return;
     window.location.href = `transaction_entry.html?client_id=${currentId}`;
   }
 
-  // ── Clear form for new entry ─────────────────────────────────────
   function clearForm() {
     currentId = null;
     const idEl = document.getElementById('clientId');
     idEl.textContent = 'New Record';
     idEl.className = 'id-val new-record';
-    // Trigger pulse — remove then re-add so it fires every time
     void idEl.offsetWidth;
     idEl.classList.add('pulse');
     idEl.addEventListener('animationend', () => idEl.classList.remove('pulse'), { once: true });
@@ -531,7 +506,6 @@
     document.getElementById('fldFirstName').focus();
   }
 
-  // ── Phone / MBI formatting ───────────────────────────────────────
   function formatPhone(input) {
     let d = input.value.replace(/\D/g,'').slice(0,10);
     if (!d) { input.value = ''; return; }
@@ -554,12 +528,10 @@
     document.getElementById(id).classList.toggle('show', show);
   }
 
-  // ── Init ─────────────────────────────────────────────────────────
   const idEl = document.getElementById('clientId');
   idEl.textContent = 'New Record';
   idEl.className = 'id-val new-record';
 
-  // ── City / County autocomplete ───────────────────────────────────
   const KY_COUNTIES = [
     'Adair','Allen','Anderson','Ballard','Barren','Bath','Bell','Boone','Bourbon','Boyd',
     'Boyle','Bracken','Breathitt','Breckinridge','Bullitt','Butler','Caldwell','Calloway',
