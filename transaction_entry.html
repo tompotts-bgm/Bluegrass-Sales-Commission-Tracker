@@ -836,7 +836,6 @@
 
   // ── SAVE ──────────────────────────────────────────────────────────
   async function saveRecord() {
-    console.log('DEBUG: saveRecord() called, selectedClientId =', selectedClientId);
     if (!selectedClientId) { showStatus('Please select a client before saving.', true); return; }
     if (!document.getElementById('broker').value) { showStatus('Please select a broker.', true); return; }
     const ep = document.querySelector('input[name="electionPeriod"]:checked');
@@ -881,12 +880,9 @@
     };
 
     // ── POST to Supabase ─────────────────────────────────────
-    console.log('DEBUG: reached Supabase save block');
-    console.log('DEBUG: client_id =', selectedClientId);
-    console.log('DEBUG: record =', JSON.stringify(record, null, 2));
+
     showStatus('Saving…', false, true);
     try {
-      console.log('DEBUG: firing fetch to', `${SUPABASE_URL}/rest/v1/transactions`);
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/transactions`, {
         method:  'POST',
         headers: HEADERS,
