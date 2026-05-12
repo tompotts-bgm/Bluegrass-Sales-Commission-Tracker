@@ -313,6 +313,17 @@
   // ── COMMISSION TABLE ──────────────────────────────────────────────
   // monthlyOverride = the override column next to monthlyRenewal
   const COMM_TABLE = {
+    2027: {
+      mapd: {
+        Humana:   { renewal:353, monthlyRenewal:29.41, monthlyOverride:5 },
+        Anthem:   { renewal:353, monthlyRenewal:29.41, monthlyOverride:5 },
+        UHC:      { renewal:353, monthlyRenewal:29.41, monthlyOverride:5 },
+        Wellcare: { renewal:353, monthlyRenewal:29.41, monthlyOverride:5 },
+        Aetna:    { renewal:353, monthlyRenewal:29.41, monthlyOverride:5 },
+        Cigna:    { renewal:0,   monthlyRenewal:0,     monthlyOverride:0 },
+      },
+      supp: { Humana:0.22, Anthem:0.22, Aetna:0.18, UHC:0.13, Cigna:0 }
+    },
     2026: {
       mapd: {
         Humana:   { renewal:347, monthlyRenewal:28.91, monthlyOverride:5 },
