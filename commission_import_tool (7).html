@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Commission Import Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; color: #222; background: #f4f6f9; padding: 2rem; }
+.container { max-width: 900px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 2rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; color: #1a1a2e; }
+p.sub { font-size: 13px; color: #666; margin-bottom: 1.5rem; }
+#drop-zone { border: 2px dashed #b0bec5; border-radius: 10px; padding: 3rem 2rem; text-align: center; cursor: pointer; transition: background 0.15s, border-color 0.15s; margin-bottom: 1.5rem; background: #fafafa; }
+#drop-zone:hover, #drop-zone.hover { background: #e8f4fd; border-color: #1976d2; }
+#drop-zone .icon { font-size: 40px; margin-bottom: 12px; }
+#drop-zone .label { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: #333; }
+#drop-zone .hint { font-size: 13px; color: #888; }
+#file-input { display: none; }
+.badge { display: inline-block; font-size: 12px; padding: 3px 10px; border-radius: 6px; font-weight: 600; }
+.badge-success { background: #e8f5e9; color: #2e7d32; }
+.badge-warning { background: #fff8e1; color: #f57f17; }
+#db-status { font-size: 12px; padding: 8px 12px; border-radius: 6px; margin-bottom: 1rem; display: none; }
+#db-status.ok  { background: #e8f5e9; color: #2e7d32; }
+#db-status.err { background: #fce4ec; color: #b71c1c; }
+#status-card { display: none; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+#status-card .row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 14px; border-bottom: 1px solid #eee; }
+#status-card .row:last-child { border-bottom: none; }
+#status-card .row .key { color: #666; font-weight: 500; }
+#mapping-section { display: none; margin-bottom: 1.25rem; }
+#mapping-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; color: #333; }
+.mapping-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mapping-row { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+.mapping-row .target { font-weight: 600; color: #333; }
+.mapping-row .source { color: #1565c0; font-family: monospace; font-size: 12px; background: #e3f2fd; padding: 2px 6px; border-radius: 4px; }
+#preview-section { display: none; margin-bottom: 1.25rem; }
+#preview-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; color: #333; }
+.table-wrap { overflow-x: auto; border: 1px solid #e0e0e0; border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #1a1a2e; color: #fff; padding: 9px 12px; text-align: left; font-weight: 600; white-space: nowrap; }
+td { padding: 8px 12px; border-bottom: 1px solid #eee; white-space: nowrap; }
+tr:nth-child(even) td { background: #f5f7fa; }
+tr:last-child td { border-bottom: none; }
+tr.negative td { color: #c62828; font-weight: 500; }
+tr:hover td { background: #e8f4fd; }
+tr.total-row td { font-weight: 700; background: #e8f4fd !important; border-top: 2px solid #1976d2; }
+#actions { display: none; gap: 10px; flex-wrap: wrap; margin-bottom: 1rem; }
+button { font-size: 13px; padding: 9px 18px; border-radius: 7px; border: 1px solid #ccc; background: #fff; color: #333; cursor: pointer; font-family: Arial, sans-serif; font-weight: 500; transition: background 0.1s; }
+button:hover { background: #f0f0f0; }
+button.primary { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+button.primary:hover { background: #2d2d5e; }
+button.danger { border-color: #e57373; color: #c62828; }
+button.danger:hover { background: #fce4ec; }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+.unknown-box { background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; font-size: 13px; display: none; }
+.unknown-box h4 { font-size: 14px; font-weight: 600; color: #e65100; margin-bottom: 6px; }
+.unknown-box p { color: #555; margin-bottom: 8px; }
+.col-list { font-family: monospace; font-size: 12px; color: #333; background: #fff; border: 1px solid #ffe082; border-radius: 6px; padding: 8px 12px; line-height: 1.8; }
+#profiles-section { margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem; }
+#profiles-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; color: #333; }
+.profile-list { display: flex; flex-direction: column; gap: 6px; }
+.profile-item { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px 14px; font-size: 13px; display: flex; align-items: center; justify-content: space-between; }
+.profile-item .name { font-weight: 600; }
+.profile-item .cols { color: #888; font-size: 12px; font-family: monospace; }
+.profile-item .pending { color: #f57f17; font-size: 11px; font-style: italic; }
+#import-log-section { margin-top: 1.5rem; border-top: 1px solid #eee; padding-top: 1.5rem; display: none; }
+#import-log-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; color: #333; display: flex; justify-content: space-between; align-items: center; }
+.log-item { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 8px 14px; font-size: 12px; display: flex; justify-content: space-between; margin-bottom: 5px; }
+.log-item .log-company { font-weight: 600; color: #1a1a2e; }
+.log-item .log-detail { color: #888; }
+#test-data-section { margin-top: 1.5rem; border-top: 2px dashed #ffcdd2; padding-top: 1.5rem; }
+#test-data-section h3 { font-size: 14px; font-weight: 600; color: #c62828; margin-bottom: 6px; }
+#test-data-section p { font-size: 12px; color: #888; margin-bottom: 10px; }
+.spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid #aaa; border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 6px; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; border-top: 1px solid #eee; padding-top: 1rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📊 Commission Import Tool</h1>
+  <p class="sub">Drag and drop a carrier spreadsheet — auto-detects the company and maps columns to your master format.</p>
+
+  <div id="db-status"></div>
+
+  <div id="drop-zone">
+    <div class="icon">📂</div>
+    <div class="label">Drop your spreadsheet here</div>
+    <div class="hint">or click to browse &nbsp;·&nbsp; .xlsx, .xls, .csv supported</div>
+    <input type="file" id="file-input" accept=".xlsx,.xls,.csv">
+  </div>
+
+  <div id="status-card">
+    <div class="row"><span class="key">File</span><span id="s-file">—</span></div>
+    <div class="row"><span class="key">Company detected</span><span id="s-company">—</span></div>
+    <div class="row"><span class="key">Rows found</span><span id="s-rows">—</span></div>
+    <div class="row"><span class="key">Confidence</span><span id="s-conf">—</span></div>
+    <div class="row"><span class="key">Commission Year</span>
+      <select id="s-year" style="font-size:13px;padding:3px 8px;border:1px solid #ddd;border-radius:6px;font-family:Arial,sans-serif;">
+        <option value="">— Select Year —</option>
+      </select>
+    </div>
+    <div class="row"><span class="key">Status</span><span id="s-status">—</span></div>
+  </div>
+
+  <div class="unknown-box" id="unknown-box">
+    <h4>⚠️ Unknown company — manual mapping needed</h4>
+    <p>These column headers were not recognized. Send them to Claude to create a new mapping profile:</p>
+    <div class="col-list" id="unknown-cols"></div>
+  </div>
+
+  <div id="mapping-section">
+    <h3>Column mapping</h3>
+    <div class="mapping-grid" id="mapping-grid"></div>
+  </div>
+
+  <div id="preview-section">
+    <h3>Preview <span id="preview-count" style="font-weight:400;color:#888;font-size:13px;"></span></h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Producer #</th><th>Product Type</th><th>Name</th>
+          <th>Effective Date</th><th>Rate</th><th>Due Date</th><th>Payment Amt</th><th>Source</th>
+        </tr></thead>
+        <tbody id="preview-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="actions">
+    <button class="primary" id="btn-save">☁ Save to Database</button>
+    <button id="btn-export">⬇ Download .xlsx</button>
+    <button id="btn-reset">↩ Start Over</button>
+  </div>
+
+  <div id="profiles-section">
+    <h3>Known company profiles</h3>
+    <div class="profile-list" id="profile-list"></div>
+  </div>
+
+  <div id="import-log-section">
+    <h3>
+      Import history
+      <span id="log-count" style="font-size:12px;font-weight:400;color:#888;"></span>
+    </h3>
+    <div id="import-log-list"></div>
+  </div>
+
+  <div id="test-data-section">
+    <h3>🧪 Testing Mode</h3>
+    <p>Use this to wipe all test data from the database once you are satisfied everything works correctly. This cannot be undone.</p>
+    <button class="danger" id="btn-clear-test">🗑 Clear All Test Data</button>
+  </div>
+
+  <footer>Commission Import Tool &nbsp;·&nbsp; Anthem &amp; Humana active &nbsp;·&nbsp; UHC, Wellcare, Aetna, Cigna, GTL coming soon</footer>
+</div>
+
+<script>
+// ── Supabase ──────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── Profiles ──────────────────────────────────────────────────────
+const OUTPUT_COLS = ['Producer Number','Product Type','Name / Group Name','Rate Effective Date','Rate','Due Date','Payment Amount'];
+const PROFILES = [
+  {
+    name: 'Anthem', color: '#1565c0',
+    detectKeys: ['TRACKING CODE','PRODUCER NUMBER','MEDICARE ID','POLICY NUMBER','PRODUCT TYPE'],
+    mapping: {
+      'Producer Number':     { col: 'PRODUCER NUMBER' },
+      'Product Type':        { col: 'PRODUCT TYPE' },
+      'Name / Group Name':   { col: 'NAME / GROUP NAME' },
+      'Rate Effective Date': { col: 'RATE EFFECTIVE DATE' },
+      'Rate':                { col: 'RATE' },
+      'Due Date':            { col: 'DUE DATE' },
+      'Payment Amount':      { col: 'PAYMENT' },
+    }
+  },
+  {
+    name: 'Humana', color: '#2e7d32',
+    detectKeys: ['COMACCT','AGT_ID','WA_SAN','CLTLST','CLTFST','TRNAMT'],
+    mapping: {
+      'Producer Number':     { col: 'WA_SAN' },
+      'Product Type':        { col: 'INSPRD' },
+      'Name / Group Name':   { combine: ['CLTLST','CLTFST'], format: 'LAST, FIRST' },
+      'Rate Effective Date': { col: 'EFFDAT' },
+      'Rate':                { col: 'TRNAMT' },
+      'Due Date':            { fallback: ['COTRDT','RUNCODE'] },
+      'Payment Amount':      { col: 'TRNAMT' },
+    }
+  },
+];
+const PENDING = ['UHC','Wellcare','Aetna','Cigna','GTL'];
+
+// ── State ─────────────────────────────────────────────────────────
+let currentData        = [];
+let currentProfile     = null;
+let currentFileName    = '';
+let currentContentHash = '';
+
+// ── Utilities ─────────────────────────────────────────────────────
+function hashRows(rows) {
+  const str = JSON.stringify(rows);
+  let h = 0;
+  for (let i = 0; i < str.length; i++) { h = Math.imul(31, h) + str.charCodeAt(i) | 0; }
+  return Math.abs(h).toString(16);
+}
+
+function setDbStatus(msg, type) {
+  const el = document.getElementById('db-status');
+  el.textContent   = msg;
+  el.className     = type;
+  el.style.display = 'block';
+}
+
+function detectCompany(headers) {
+  const upper = headers.map(h => (h||'').toString().toUpperCase().trim());
+  let best = null, bestScore = 0;
+  for (const p of PROFILES) {
+    const score = p.detectKeys.filter(k => upper.includes(k.toUpperCase())).length;
+    const pct   = score / p.detectKeys.length;
+    if (pct > bestScore) { bestScore = pct; best = p; }
+  }
+  return bestScore >= 0.4 ? { profile: best, confidence: bestScore } : null;
+}
+
+function resolveCell(row, mapDef, headers) {
+  if (!mapDef) return '';
+  const upper = {};
+  headers.forEach(h => { upper[(h||'').toString().toUpperCase().trim()] = h; });
+  if (mapDef.col) { const k = upper[mapDef.col.toUpperCase()]; return k !== undefined ? (row[k] ?? '') : ''; }
+  if (mapDef.combine) {
+    const parts = mapDef.combine.map(c => { const k = upper[c.toUpperCase()]; return k !== undefined ? (row[k] || '') : ''; });
+    if (mapDef.format === 'LAST, FIRST') { const [l,f] = parts; return f ? `${l}, ${f}`.trim().replace(/,\s*$/,'') : l; }
+    return parts.filter(Boolean).join(' ');
+  }
+  if (mapDef.fallback) {
+    for (const c of mapDef.fallback) { const k = upper[c.toUpperCase()]; if (k !== undefined && row[k]) return row[k]; }
+    return '';
+  }
+  return '';
+}
+
+function resetScreen() {
+  currentData = []; currentProfile = null; currentFileName = ''; currentContentHash = '';
+  ['status-card','mapping-section','preview-section','unknown-box'].forEach(function(id) {
+    document.getElementById(id).style.display = 'none';
+  });
+  document.getElementById('actions').style.display  = 'none';
+  document.getElementById('preview-body').innerHTML = '';
+  document.getElementById('s-year').value = new Date().getFullYear();
+  const btn = document.getElementById('btn-save');
+  btn.innerHTML = '☁ Save to Database';
+  btn.disabled  = false;
+  fi.value = '';
+}
+
+// ── Populate year dropdown ────────────────────────────────────────
+function populateYearDropdown() {
+  const sel = document.getElementById('s-year');
+  const currentYear = new Date().getFullYear();
+  for (let y = currentYear; y >= currentYear - 10; y--) {
+    const opt = document.createElement('option');
+    opt.value = y; opt.textContent = y;
+    if (y === currentYear) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+// ── DB: connection check ──────────────────────────────────────────
+async function checkConnection() {
+  try {
+    const { error } = await db.from('commission_imports').select('id').limit(1);
+    if (error) throw error;
+    setDbStatus('✅ Connected to Supabase', 'ok');
+    loadImportLog();
+  } catch(e) {
+    setDbStatus('❌ Database connection failed: ' + e.message, 'err');
+  }
+}
+
+// ── DB: import history ────────────────────────────────────────────
+async function loadImportLog() {
+  const { data, error } = await db
+    .from('commission_imports')
+    .select('*')
+    .order('imported_at', { ascending: false })
+    .limit(20);
+  if (error || !data || !data.length) return;
+
+  const section = document.getElementById('import-log-section');
+  const list    = document.getElementById('import-log-list');
+  const count   = document.getElementById('log-count');
+  section.style.display = 'block';
+  count.textContent     = '(' + data.length + ' imports)';
+  list.innerHTML        = '';
+
+  data.forEach(function(entry) {
+    const div = document.createElement('div'); div.className = 'log-item';
+    const d = new Date(entry.imported_at).toLocaleDateString();
+    const t = new Date(entry.imported_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    div.innerHTML =
+      '<span class="log-company">' + entry.company + '</span>' +
+      '<span class="log-detail">' + entry.file_name + ' &nbsp;·&nbsp; ' + entry.row_count + ' rows &nbsp;·&nbsp; ' + d + ' ' + t + '</span>';
+    list.appendChild(div);
+  });
+}
+
+// ── DB: duplicate check ───────────────────────────────────────────
+async function checkDuplicate(fileName, contentHash) {
+  const [{ data: exact }, { data: named }] = await Promise.all([
+    db.from('commission_imports').select('*').eq('content_hash', contentHash).limit(1).maybeSingle(),
+    db.from('commission_imports').select('*').eq('file_name', fileName).limit(1).maybeSingle(),
+  ]);
+  return { exactMatch: exact || null, nameMatch: named || null };
+}
+
+// ── DB: clear all test data ───────────────────────────────────────
+async function clearTestData() {
+  if (!confirm('⚠️ CLEAR ALL TEST DATA\n\nThis will permanently delete ALL commission records and import history.\n\nThis cannot be undone. Continue?')) return;
+  if (!confirm('Are you absolutely sure? Click OK to wipe the database clean.')) return;
+
+  const btn = document.getElementById('btn-clear-test');
+  btn.innerHTML = '<span class="spinner"></span>Clearing…';
+  btn.disabled  = true;
+
+  try {
+    const { error: e1 } = await db.from('commissions').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    if (e1) throw e1;
+    const { error: e2 } = await db.from('commission_imports').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    if (e2) throw e2;
+
+    btn.innerHTML = '✅ All test data cleared';
+    setDbStatus('✅ Database cleared — ready for live use', 'ok');
+    document.getElementById('import-log-section').style.display = 'none';
+    document.getElementById('import-log-list').innerHTML        = '';
+    document.getElementById('log-count').textContent            = '';
+  } catch(e) {
+    btn.innerHTML = '🗑 Clear All Test Data';
+    btn.disabled  = false;
+    alert('Clear failed: ' + e.message);
+    setDbStatus('❌ Clear failed: ' + e.message, 'err');
+  }
+}
+
+// ── Process file ──────────────────────────────────────────────────
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const wb   = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      if (!rows.length) { alert('No data found in file.'); return; }
+
+      const headers     = Object.keys(rows[0]);
+      const contentHash = hashRows(rows);
+
+      // Duplicate check
+      const { exactMatch, nameMatch } = await checkDuplicate(file.name, contentHash);
+      if (exactMatch) {
+        const d = new Date(exactMatch.imported_at).toLocaleDateString();
+        if (!confirm('⚠️ DUPLICATE FILE\n\nThis exact file was imported on ' + d + '.\nImporting again will create duplicates.\n\nOK to proceed anyway, Cancel to stop.')) {
+          fi.value = ''; return;
+        }
+      } else if (nameMatch) {
+        const d = new Date(nameMatch.imported_at).toLocaleDateString();
+        if (!confirm('⚠️ FILENAME MATCH\n\n"' + file.name + '" was imported on ' + d + ' but content differs.\nThis may be an updated statement.\n\nOK to proceed, Cancel to stop.')) {
+          fi.value = ''; return;
+        }
+      }
+
+      currentFileName    = file.name;
+      currentContentHash = contentHash;
+
+      // Status card
+      document.getElementById('s-file').textContent = file.name;
+      document.getElementById('s-rows').textContent = rows.length + ' rows';
+      document.getElementById('status-card').style.display = 'block';
+
+      const detected = detectCompany(headers);
+      if (!detected) {
+        document.getElementById('s-company').innerHTML = '<span class="badge badge-warning">Unknown</span>';
+        document.getElementById('s-conf').textContent  = '—';
+        document.getElementById('s-status').innerHTML  = '<span class="badge badge-warning">Manual mapping needed</span>';
+        document.getElementById('unknown-box').style.display = 'block';
+        document.getElementById('unknown-cols').textContent  = headers.join(',  ');
+        document.getElementById('actions').style.display     = 'flex';
+        return;
+      }
+
+      currentProfile = detected.profile;
+      document.getElementById('s-company').innerHTML = '<span class="badge badge-success">' + currentProfile.name + '</span>';
+      document.getElementById('s-conf').textContent  = Math.round(detected.confidence * 100) + '% header match';
+      document.getElementById('s-status').innerHTML  = '<span class="badge badge-success">Ready to save</span>';
+
+      // Mapping grid
+      const grid = document.getElementById('mapping-grid');
+      grid.innerHTML = '';
+      for (const [target, mapDef] of Object.entries(currentProfile.mapping)) {
+        const div = document.createElement('div'); div.className = 'mapping-row';
+        const src = mapDef.col || (mapDef.combine ? mapDef.combine.join(' + ') : mapDef.fallback ? mapDef.fallback.join(' → ') : '?');
+        div.innerHTML = '<span class="target">' + target + '</span><span class="source">' + src + '</span>';
+        grid.appendChild(div);
+      }
+      document.getElementById('mapping-section').style.display = 'block';
+
+      // Map rows
+      currentData = rows.map(function(row) {
+        const mapped = {};
+        for (const [target, mapDef] of Object.entries(currentProfile.mapping)) {
+          mapped[target] = resolveCell(row, mapDef, headers);
+        }
+        mapped['_source'] = currentProfile.name;
+        return mapped;
+      });
+
+      // Preview
+      const tbody = document.getElementById('preview-body');
+      tbody.innerHTML = '';
+      document.getElementById('preview-count').textContent =
+        '(first ' + Math.min(10, currentData.length) + ' of ' + currentData.length + ' rows)';
+      currentData.slice(0,10).forEach(function(row) {
+        const tr  = document.createElement('tr');
+        const pay = parseFloat(row['Payment Amount']);
+        if (!isNaN(pay) && pay < 0) tr.className = 'negative';
+        OUTPUT_COLS.forEach(function(col) {
+          const td = document.createElement('td');
+          let val  = row[col] !== undefined ? row[col] : '';
+          if (col === 'Payment Amount' && !isNaN(pay)) val = '$' + pay.toFixed(2);
+          td.textContent = val; tr.appendChild(td);
+        });
+        const s = document.createElement('td');
+        s.textContent = row['_source'] || ''; s.style.color = '#888'; tr.appendChild(s);
+        tbody.appendChild(tr);
+      });
+      const total = currentData.reduce(function(s,r) { return s + (parseFloat(r['Payment Amount']) || 0); }, 0);
+      const ttr   = document.createElement('tr'); ttr.className = 'total-row';
+      OUTPUT_COLS.forEach(function(col, i) {
+        const td = document.createElement('td');
+        td.textContent = i === 5 ? 'TOTAL' : i === 6 ? '$' + total.toFixed(2) : '';
+        ttr.appendChild(td);
+      });
+      ttr.appendChild(document.createElement('td')); tbody.appendChild(ttr);
+
+      document.getElementById('preview-section').style.display = 'block';
+      document.getElementById('actions').style.display         = 'flex';
+
+    } catch(err) { alert('Error reading file: ' + err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── Save to Supabase ──────────────────────────────────────────────
+async function saveToDatabase() {
+  const year = parseInt(document.getElementById('s-year').value);
+  if (!year) {
+    alert('Please select a Commission Year before saving.');
+    document.getElementById('s-year').focus();
+    return;
+  }
+
+  const btn = document.getElementById('btn-save');
+  btn.innerHTML = '<span class="spinner"></span>Saving…';
+  btn.disabled  = true;
+  try {
+    const { data: imp, error: impErr } = await db
+      .from('commission_imports')
+      .insert({ file_name: currentFileName, company: currentProfile.name, row_count: currentData.length, content_hash: currentContentHash, commission_year: year })
+      .select().single();
+    if (impErr) throw impErr;
+
+    const rows = currentData.map(function(r) {
+      return {
+        import_id:           imp.id,
+        producer_number:     r['Producer Number']     || null,
+        product_type:        r['Product Type']        || null,
+        name_group_name:     r['Name / Group Name']   || null,
+        rate_effective_date: r['Rate Effective Date'] || null,
+        rate:                r['Rate']                || null,
+        due_date:            r['Due Date']            || null,
+        payment_amount:      parseFloat(r['Payment Amount']) || null,
+        source_company:      r['_source']             || null,
+        commission_year:     year,
+      };
+    });
+
+    for (let i = 0; i < rows.length; i += 500) {
+      const { error: rowErr } = await db.from('commissions').insert(rows.slice(i, i + 500));
+      if (rowErr) throw rowErr;
+    }
+
+    btn.innerHTML = '✅ Saved to Database';
+    setDbStatus('✅ ' + currentData.length + ' records saved — ' + currentProfile.name + ' · ' + currentFileName + ' · ' + year, 'ok');
+    loadImportLog();
+
+  } catch(err) {
+    btn.innerHTML = '☁ Save to Database';
+    btn.disabled  = false;
+    alert('Save failed: ' + err.message);
+    setDbStatus('❌ Save failed: ' + err.message, 'err');
+  }
+}
+
+// ── Export xlsx ───────────────────────────────────────────────────
+function exportXlsx() {
+  const wsData = [ OUTPUT_COLS.concat(['Source Company']) ].concat(
+    currentData.map(function(r) {
+      return OUTPUT_COLS.map(function(c) { return r[c] !== undefined ? r[c] : ''; }).concat([r['_source'] || '']);
+    })
+  );
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [18,14,24,18,10,14,16,16].map(function(w) { return { wch: w }; });
+  XLSX.utils.book_append_sheet(wb, ws, 'Commission Data');
+  XLSX.writeFile(wb, 'commission_' + (currentProfile ? currentProfile.name.toLowerCase() : 'export') + '.xlsx');
+}
+
+// ── Events ────────────────────────────────────────────────────────
+const dz = document.getElementById('drop-zone');
+const fi = document.getElementById('file-input');
+dz.addEventListener('click', function() { fi.click(); });
+dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('hover'); });
+dz.addEventListener('dragleave', function() { dz.classList.remove('hover'); });
+dz.addEventListener('drop', function(e) { e.preventDefault(); dz.classList.remove('hover'); if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]); });
+fi.addEventListener('change', function() { if (fi.files[0]) processFile(fi.files[0]); fi.value = ''; });
+document.getElementById('btn-save').addEventListener('click', saveToDatabase);
+document.getElementById('btn-export').addEventListener('click', exportXlsx);
+document.getElementById('btn-reset').addEventListener('click', resetScreen);
+document.getElementById('btn-clear-test').addEventListener('click', clearTestData);
+
+// ── Render profiles ───────────────────────────────────────────────
+const pl = document.getElementById('profile-list');
+PROFILES.forEach(function(p) {
+  const div = document.createElement('div'); div.className = 'profile-item';
+  div.innerHTML = '<span class="name" style="color:' + p.color + '">' + p.name + '</span><span class="cols">' + p.detectKeys.slice(0,4).join(', ') + ' …</span>';
+  pl.appendChild(div);
+});
+PENDING.forEach(function(name) {
+  const div = document.createElement('div'); div.className = 'profile-item'; div.style.opacity = '0.6';
+  div.innerHTML = '<span class="name" style="color:#999">' + name + '</span><span class="pending">⏳ Pending — spreadsheet needed</span>';
+  pl.appendChild(div);
+});
+
+// ── Init ──────────────────────────────────────────────────────────
+populateYearDropdown();
+checkConnection();
+</script>
+</body>
+</html>
