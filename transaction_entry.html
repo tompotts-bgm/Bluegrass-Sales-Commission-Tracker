@@ -845,11 +845,13 @@
 
     const result = calcCommissions();
 
-    // Pull address from autofilled client fields
-    const clientAddress  = document.getElementById('cfAddress').value || null;
-    const clientCity     = document.getElementById('cfCity').value    || null;
-    const clientState    = document.getElementById('cfState').value   || null;
-    const clientZip      = document.getElementById('cfZip').value     || null;
+    // Pull name and address from autofilled client fields
+    const clientFirstName = document.getElementById('firstName').value || null;
+    const clientLastName  = document.getElementById('lastName').value  || null;
+    const clientAddress   = document.getElementById('cfAddress').value || null;
+    const clientCity      = document.getElementById('cfCity').value    || null;
+    const clientState     = document.getElementById('cfState').value   || null;
+    const clientZip       = document.getElementById('cfZip').value     || null;
 
     // Pull monthly renewal and renewal start date from calc result
     const monthlyRenewalAmt   = (result && !result.error && result.monthlyRenewal) ? result.monthlyRenewal : null;
@@ -857,6 +859,8 @@
 
     const record = {
       client_id:              selectedClientId,
+      first_name:             clientFirstName,
+      last_name:              clientLastName,
       policy_status:          document.getElementById('policyStatus').value,
       broker:                 document.getElementById('broker').value,
       date_written:           document.getElementById('dateWritten').value,
