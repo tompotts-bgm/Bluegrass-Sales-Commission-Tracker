@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Client Commission Report — BluegrassMedicare LLC</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ── Base ───────────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; color: #222; background: #f4f6f9; padding: 2rem; }
+.container { max-width: 1060px; margin: 0 auto; }
+h1 { font-size: 22px; font-weight: 600; color: #1a1a2e; margin-bottom: 4px; }
+p.sub { font-size: 13px; color: #666; margin-bottom: 1.25rem; }
+
+/* ── Nav ────────────────────────────────────────────────────────── */
+.nav { display: flex; gap: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.nav a { font-size: 13px; padding: 7px 14px; border-radius: 7px; border: 1px solid #ddd; background: #fff; color: #333; text-decoration: none; font-weight: 500; }
+.nav a:hover { background: #f0f0f0; }
+.nav a.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+
+/* ── Status ─────────────────────────────────────────────────────── */
+#db-status { font-size: 12px; padding: 8px 12px; border-radius: 6px; margin-bottom: 1.25rem; display: none; }
+#db-status.ok  { background: #e8f5e9; color: #2e7d32; }
+#db-status.err { background: #fce4ec; color: #b71c1c; }
+
+/* ── Filters ────────────────────────────────────────────────────── */
+.filters { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+.filter-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 0.75rem; }
+.filter-row:last-child { margin-bottom: 0; }
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
+.filter-group label { font-size: 11px; font-weight: 700; color: #888; letter-spacing: 0.5px; }
+.filter-group select,
+.filter-group input[type="text"] {
+  font-size: 13px; padding: 6px 10px; border: 1px solid #ddd;
+  border-radius: 6px; font-family: Arial, sans-serif;
+  background: #fff; color: #222; min-width: 150px;
+}
+.filter-group select.required-field { border-color: #1976d2; }
+
+/* ── Buttons ────────────────────────────────────────────────────── */
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+button { font-size: 13px; padding: 8px 16px; border-radius: 7px; border: 1px solid #ccc; background: #fff; color: #333; cursor: pointer; font-family: Arial, sans-serif; font-weight: 500; transition: background 0.1s; white-space: nowrap; }
+button:hover { background: #f0f0f0; }
+button.primary { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+button.primary:hover { background: #2d2d5e; }
+button.secondary { border-color: #1976d2; color: #1976d2; }
+button.secondary:hover { background: #e3f2fd; }
+
+/* ── Summary cards ──────────────────────────────────────────────── */
+.summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+.card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 1rem 1.25rem; }
+.card-label { font-size: 11px; font-weight: 700; color: #888; letter-spacing: 0.5px; margin-bottom: 4px; }
+.card-value { font-size: 21px; font-weight: 700; color: #1a1a2e; }
+.card-sub { font-size: 12px; color: #aaa; margin-top: 2px; }
+
+/* ── Report area ────────────────────────────────────────────────── */
+#report-area { display: none; }
+#report-area .report-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+#report-area .report-actions h3 { font-size: 15px; font-weight: 600; color: #333; }
+
+/* ── Client block ───────────────────────────────────────────────── */
+.client-block { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; margin-bottom: 1rem; page-break-inside: avoid; }
+.client-header { background: #1a1a2e; color: #fff; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; }
+.client-header .client-name { font-size: 14px; font-weight: 700; letter-spacing: 0.3px; }
+.client-header .client-total { font-size: 14px; font-weight: 700; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #e8f4fd; color: #1565c0; padding: 7px 12px; text-align: left; font-weight: 600; white-space: nowrap; font-size: 11px; letter-spacing: 0.3px; border-bottom: 1px solid #bbdefb; }
+th.num, td.num { text-align: right; }
+td { padding: 8px 12px; border-bottom: 1px solid #eee; white-space: nowrap; }
+tr:nth-child(even) td { background: #f5f7fa; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #e8f4fd; }
+tr.negative td { color: #c62828; }
+
+/* Grand total */
+.grand-total { background: #fff; border: 2px solid #1a1a2e; border-radius: 10px; padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
+.grand-total .label { font-size: 15px; font-weight: 700; color: #1a1a2e; }
+.grand-total .amount { font-size: 22px; font-weight: 700; color: #1a1a2e; }
+.grand-total .sub { font-size: 12px; color: #888; margin-top: 2px; }
+
+/* ── Empty / loading ────────────────────────────────────────────── */
+.msg { padding: 3rem; text-align: center; color: #aaa; font-size: 14px; background: #fff; border-radius: 10px; border: 1px solid #e0e0e0; }
+.spinner-lg { display: inline-block; width: 28px; height: 28px; border: 3px solid #e0e0e0; border-top-color: #1a1a2e; border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── PRINT ──────────────────────────────────────────────────────── */
+#print-header { display: none; }
+
+@media print {
+  body { background: #fff; padding: 0; font-size: 11px; }
+  .container { max-width: 100%; }
+  .nav, .filters, .summary-cards, .btn-row,
+  .report-actions, #db-status { display: none !important; }
+
+  #print-header {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #1a1a2e;
+  }
+  #print-header .agency { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+  #print-header .report-name { font-size: 13px; color: #444; margin-top: 4px; }
+  #print-header .report-meta { font-size: 11px; color: #888; margin-top: 4px; }
+
+  #report-area { display: block !important; }
+
+  .client-block { border: 1px solid #ccc; border-radius: 0; margin-bottom: 0.75rem; page-break-inside: avoid; }
+  .client-header { background: #1a1a2e !important; color: #fff !important; padding: 6px 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .client-header .client-name { font-size: 12px; }
+  .client-header .client-total { font-size: 12px; }
+
+  th { background: #e8f4fd !important; color: #1565c0 !important; padding: 5px 8px; font-size: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  td { padding: 5px 8px; font-size: 10px; }
+  tr:nth-child(even) td { background: #f5f5f5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .grand-total { border: 2px solid #1a1a2e; padding: 0.75rem 1rem; margin-top: 0.75rem; }
+  .grand-total .amount { font-size: 16px; }
+}
+
+footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; padding-top: 1rem; border-top: 1px solid #eee; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Print header -->
+  <div id="print-header">
+    <div class="agency">BluegrassMedicare LLC</div>
+    <div class="report-name" id="ph-report-name">Client Commission Report</div>
+    <div class="report-meta" id="ph-meta"></div>
+  </div>
+
+  <h1>👤 Client Commission Report</h1>
+  <p class="sub">BluegrassMedicare LLC &nbsp;·&nbsp; All commissions by client, alphabetical order</p>
+
+  <div class="nav">
+    <a href="commission_report.html">Flexible Report</a>
+    <a href="#" class="active">By Client</a>
+    <a href="#" style="opacity:0.5;cursor:default;">Exception Report</a>
+  </div>
+
+  <div id="db-status"></div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filter-row">
+      <div class="filter-group">
+        <label>YEAR <span style="color:#c62828">*</span></label>
+        <select id="filter-year" class="required-field">
+          <option value="">— Select Year —</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>COMPANY</label>
+        <select id="filter-company"><option value="">All Companies</option></select>
+      </div>
+      <div class="filter-group">
+        <label>PRODUCT TYPE</label>
+        <select id="filter-product"><option value="">All Products</option></select>
+      </div>
+      <div class="filter-group">
+        <label>PRODUCER / AGENT</label>
+        <select id="filter-producer"><option value="">All Producers</option></select>
+      </div>
+      <div class="filter-group">
+        <label>CLIENT SEARCH</label>
+        <input type="text" id="filter-client" placeholder="Search name…">
+      </div>
+    </div>
+    <div class="filter-row">
+      <div class="btn-row">
+        <button class="primary" id="btn-run">▶ Run Report</button>
+        <button id="btn-reset">Reset Filters</button>
+        <button class="secondary" id="btn-export">⬇ Export Excel</button>
+        <button class="secondary" onclick="printReport('portrait')">🖨 Print Portrait</button>
+        <button class="secondary" onclick="printReport('landscape')">🖨 Print Landscape</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="summary-cards">
+    <div class="card"><div class="card-label">TOTAL COMMISSIONS</div><div class="card-value" id="card-total">—</div><div class="card-sub" id="card-total-sub"></div></div>
+    <div class="card"><div class="card-label">TOTAL CLIENTS</div><div class="card-value" id="card-clients">—</div><div class="card-sub" id="card-clients-sub"></div></div>
+    <div class="card"><div class="card-label">TOTAL RECORDS</div><div class="card-value" id="card-records">—</div><div class="card-sub" id="card-records-sub"></div></div>
+    <div class="card"><div class="card-label">AVG PER CLIENT</div><div class="card-value" id="card-avg">—</div><div class="card-sub" id="card-avg-sub"></div></div>
+    <div class="card"><div class="card-label">TOP CLIENT</div><div class="card-value" id="card-top" style="font-size:14px;">—</div><div class="card-sub" id="card-top-sub"></div></div>
+  </div>
+
+  <!-- Report output -->
+  <div id="report-area">
+    <div class="report-actions">
+      <h3 id="report-title">Client Report</h3>
+      <span id="report-meta" style="font-size:12px;color:#888;"></span>
+    </div>
+    <div id="client-list"></div>
+    <div class="grand-total" id="grand-total-block" style="display:none;">
+      <div>
+        <div class="label">Grand Total</div>
+        <div class="sub" id="grand-total-sub"></div>
+      </div>
+      <div class="amount" id="grand-total-amount">—</div>
+    </div>
+  </div>
+
+  <div id="initial-msg" class="msg">
+    Select a year and click <strong>Run Report</strong> to load client commissions.
+  </div>
+
+  <footer>BluegrassMedicare LLC &nbsp;·&nbsp; Client Commission Report &nbsp;·&nbsp; Data from Supabase</footer>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let allData      = [];
+let filteredData = [];
+
+function fmt(n)  { return '$' + Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtN(n) { return Number(n).toLocaleString('en-US'); }
+function fmtDate(val) {
+  if (!val) return '—';
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return val;
+  const mo = String(d.getUTCMonth()+1).padStart(2,'0');
+  const dy = String(d.getUTCDate()).padStart(2,'0');
+  const yr = d.getUTCFullYear();
+  return mo+'/'+dy+'/'+yr;
+}
+
+function setDbStatus(msg, cls) {
+  const el = document.getElementById('db-status');
+  el.textContent = msg; el.className = cls; el.style.display = 'block';
+}
+
+// ── Load ──────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    const { error } = await db.from('commission_imports').select('id').limit(1);
+    if (error) throw error;
+    setDbStatus('✅ Connected to Supabase', 'ok');
+  } catch(e) { setDbStatus('❌ Connection failed: ' + e.message, 'err'); return; }
+
+  const { data, error } = await db.from('commissions').select('*');
+  if (error) { setDbStatus('❌ Failed to load: ' + error.message, 'err'); return; }
+  allData = data || [];
+  populateFilters();
+}
+
+// ── Product type normalization ────────────────────────────────────
+const PRODUCT_ALIASES = { 'MS': 'MSUP', 'PD': 'PARTD' };
+function normalizeProduct(val) {
+  if (!val) return val;
+  const upper = val.toString().toUpperCase().trim();
+  return PRODUCT_ALIASES[upper] || upper;
+}
+
+function populateFilters() {
+  const years     = [...new Set(allData.map(r=>r.commission_year).filter(Boolean))].sort().reverse();
+  const companies = [...new Set(allData.map(r=>r.source_company).filter(Boolean))].sort();
+  // Normalize products — show canonical values only (MS→MSUP, PD→PARTD)
+  const products  = [...new Set(allData.map(r=>normalizeProduct(r.product_type)).filter(Boolean))].sort();
+  const producers = [...new Set(allData.map(r=>r.producer_number).filter(Boolean))].sort();
+
+  function fill(id, items) {
+    const sel = document.getElementById(id);
+    items.forEach(function(v) {
+      const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o);
+    });
+  }
+  fill('filter-year', years);
+  fill('filter-company', companies);
+  fill('filter-product', products);
+  fill('filter-producer', producers);
+
+  // Default to most recent year
+  if (years.length) document.getElementById('filter-year').value = years[0];
+}
+
+// ── Filter ────────────────────────────────────────────────────────
+function applyFilters() {
+  const year     = document.getElementById('filter-year').value;
+  const company  = document.getElementById('filter-company').value;
+  const product  = document.getElementById('filter-product').value;
+  const producer = document.getElementById('filter-producer').value;
+  const client   = document.getElementById('filter-client').value.toLowerCase().trim();
+
+  filteredData = allData.filter(function(r) {
+    if (year     && String(r.commission_year) !== year)   return false;
+    if (company  && r.source_company  !== company)        return false;
+    // Use normalized comparison so MS matches MSUP, PD matches PARTD
+    if (product  && normalizeProduct(r.product_type) !== normalizeProduct(product)) return false;
+    if (producer && r.producer_number !== producer)       return false;
+    if (client   && !(r.name_group_name||'').toLowerCase().includes(client)) return false;
+    return true;
+  });
+}
+
+// ── Run Report ────────────────────────────────────────────────────
+function runReport() {
+  const year = document.getElementById('filter-year').value;
+  if (!year) {
+    alert('Please select a year to run the report.');
+    document.getElementById('filter-year').focus();
+    return;
+  }
+
+  applyFilters();
+
+  const company  = document.getElementById('filter-company').value;
+  const product  = document.getElementById('filter-product').value;
+  const producer = document.getElementById('filter-producer').value;
+  const client   = document.getElementById('filter-client').value.trim();
+
+  const parts = ['Year: ' + year];
+  if (company)  parts.push('Company: ' + company);
+  if (product)  parts.push('Product: ' + product);
+  if (producer) parts.push('Producer: ' + producer);
+  if (client)   parts.push('Client: ' + client);
+  const metaStr = parts.join(' | ');
+
+  document.getElementById('report-meta').textContent = metaStr;
+  document.getElementById('ph-meta').textContent = metaStr + '   ·   Printed: ' + new Date().toLocaleDateString();
+  document.getElementById('ph-report-name').textContent = 'Client Commission Report — ' + year;
+  document.getElementById('report-title').textContent = 'Client Commission Report — ' + year;
+
+  renderCards();
+  renderClients();
+
+  document.getElementById('initial-msg').style.display = 'none';
+  document.getElementById('report-area').style.display = 'block';
+}
+
+// ── Cards ─────────────────────────────────────────────────────────
+function renderCards() {
+  const total   = filteredData.reduce(function(s,r){return s+(parseFloat(r.payment_amount)||0);},0);
+  const clients = [...new Set(filteredData.map(r=>r.name_group_name).filter(Boolean))];
+  const avg     = clients.length ? total / clients.length : 0;
+
+  // Top client by total
+  const clientTotals = {};
+  filteredData.forEach(function(r) {
+    const cl = r.name_group_name || 'Unknown';
+    if (!clientTotals[cl]) clientTotals[cl] = 0;
+    clientTotals[cl] += parseFloat(r.payment_amount) || 0;
+  });
+  const top = Object.entries(clientTotals).sort(function(a,b){return b[1]-a[1];})[0];
+
+  document.getElementById('card-total').textContent      = fmt(total);
+  document.getElementById('card-total-sub').textContent  = 'total commissions';
+  document.getElementById('card-clients').textContent    = fmtN(clients.length);
+  document.getElementById('card-clients-sub').textContent = 'unique clients';
+  document.getElementById('card-records').textContent    = fmtN(filteredData.length);
+  document.getElementById('card-records-sub').textContent = 'commission records';
+  document.getElementById('card-avg').textContent        = fmt(avg);
+  document.getElementById('card-avg-sub').textContent    = 'per client';
+  document.getElementById('card-top').textContent        = top ? top[0] : '—';
+  document.getElementById('card-top-sub').textContent    = top ? fmt(top[1]) : '';
+}
+
+// ── Render client blocks ──────────────────────────────────────────
+function renderClients() {
+  const list = document.getElementById('client-list');
+  list.innerHTML = '';
+
+  // Group by client name
+  const groups = {};
+  filteredData.forEach(function(r) {
+    const cl = (r.name_group_name || 'Unknown').trim();
+    if (!groups[cl]) groups[cl] = [];
+    groups[cl].push(r);
+  });
+
+  // Sort clients alphabetically
+  const sortedClients = Object.keys(groups).sort(function(a,b){ return a.localeCompare(b); });
+
+  if (!sortedClients.length) {
+    list.innerHTML = '<div class="msg">No records found for the selected filters.</div>';
+    document.getElementById('grand-total-block').style.display = 'none';
+    return;
+  }
+
+  let grandTotal   = 0;
+  let grandRecords = 0;
+
+  sortedClients.forEach(function(clientName) {
+    const rows       = groups[clientName];
+    const clientTotal = rows.reduce(function(s,r){return s+(parseFloat(r.payment_amount)||0);},0);
+    grandTotal   += clientTotal;
+    grandRecords += rows.length;
+
+    // Client block
+    const block = document.createElement('div');
+    block.className = 'client-block';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'client-header';
+    header.innerHTML =
+      '<span class="client-name">' + clientName + '</span>' +
+      '<span class="client-total">' + fmt(clientTotal) + '</span>';
+    block.appendChild(header);
+
+    // Table
+    const wrap = document.createElement('div');
+    wrap.className = 'table-wrap';
+
+    const table = document.createElement('table');
+    table.innerHTML =
+      '<thead><tr>' +
+      '<th>Company</th>' +
+      '<th>Product</th>' +
+      '<th>Producer #</th>' +
+      '<th>Effective Date</th>' +
+      '<th>Rate</th>' +
+      '<th>Due Date</th>' +
+      '<th class="num">Payment</th>' +
+      '</tr></thead>';
+
+    const tbody = document.createElement('tbody');
+
+    // Sort rows by effective date then company
+    rows.sort(function(a,b){
+      const da = a.rate_effective_date || '';
+      const db2 = b.rate_effective_date || '';
+      if (da !== db2) return da.localeCompare(db2);
+      return (a.source_company||'').localeCompare(b.source_company||'');
+    });
+
+    rows.forEach(function(r) {
+      const tr  = document.createElement('tr');
+      const pay = parseFloat(r.payment_amount);
+      if (!isNaN(pay) && pay < 0) tr.className = 'negative';
+      tr.innerHTML =
+        '<td>' + (r.source_company||'—') + '</td>' +
+        '<td>' + (r.product_type||'—') + '</td>' +
+        '<td>' + (r.producer_number||'—') + '</td>' +
+        '<td>' + fmtDate(r.rate_effective_date) + '</td>' +
+        '<td>' + (r.rate||'—') + '</td>' +
+        '<td>' + fmtDate(r.due_date) + '</td>' +
+        '<td class="num">' + (!isNaN(pay)?fmt(pay):'—') + '</td>';
+      tbody.appendChild(tr);
+    });
+
+    // Client subtotal row if multiple records
+    if (rows.length > 1) {
+      const str = document.createElement('tr');
+      str.style.cssText = 'background:#f0f7ff!important;font-weight:600;';
+      str.innerHTML =
+        '<td colspan="6" style="text-align:right;color:#1565c0;font-size:12px;">Subtotal (' + rows.length + ' records)</td>' +
+        '<td class="num" style="color:#1565c0;">' + fmt(clientTotal) + '</td>';
+      tbody.appendChild(str);
+    }
+
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    block.appendChild(wrap);
+    list.appendChild(block);
+  });
+
+  // Grand total
+  const gt = document.getElementById('grand-total-block');
+  document.getElementById('grand-total-amount').textContent = fmt(grandTotal);
+  document.getElementById('grand-total-sub').textContent    =
+    fmtN(sortedClients.length) + ' clients · ' + fmtN(grandRecords) + ' records';
+  gt.style.display = 'flex';
+}
+
+// ── Print ─────────────────────────────────────────────────────────
+function printReport(orientation) {
+  let styleEl = document.getElementById('print-page-style');
+  if (!styleEl) { styleEl = document.createElement('style'); styleEl.id='print-page-style'; document.head.appendChild(styleEl); }
+  styleEl.textContent = '@page { size: letter ' + orientation + '; margin: 0.75in; }';
+  window.print();
+}
+
+// ── Export Excel ──────────────────────────────────────────────────
+function exportExcel() {
+  const year = document.getElementById('filter-year').value || 'All';
+  const wb   = XLSX.utils.book_new();
+
+  // Summary sheet — one row per client
+  const clientTotals = {};
+  filteredData.forEach(function(r) {
+    const cl = (r.name_group_name||'Unknown').trim();
+    if (!clientTotals[cl]) clientTotals[cl] = { total: 0, count: 0 };
+    clientTotals[cl].total += parseFloat(r.payment_amount)||0;
+    clientTotals[cl].count++;
+  });
+  const sumRows = Object.entries(clientTotals)
+    .sort(function(a,b){return a[0].localeCompare(b[0]);})
+    .map(function(e){ return [e[0], parseFloat(e[1].total.toFixed(2)), e[1].count]; });
+  const ws1 = XLSX.utils.aoa_to_sheet([['Client Name','Total Paid','Records']].concat(sumRows));
+  ws1['!cols'] = [30,14,10].map(function(w){return{wch:w};});
+  XLSX.utils.book_append_sheet(wb, ws1, 'Summary by Client');
+
+  // Detail sheet — every record sorted by client then date
+  const detailRows = filteredData.slice().sort(function(a,b){
+    const ca = (a.name_group_name||'').localeCompare(b.name_group_name||'');
+    if (ca !== 0) return ca;
+    return (a.rate_effective_date||'').localeCompare(b.rate_effective_date||'');
+  }).map(function(r){
+    return [
+      r.name_group_name||'',
+      r.source_company||'',
+      r.product_type||'',
+      r.producer_number||'',
+      fmtDate(r.rate_effective_date),
+      r.rate||'',
+      fmtDate(r.due_date),
+      parseFloat(r.payment_amount)||0
+    ];
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet([
+    ['Client Name','Company','Product','Producer #','Effective Date','Rate','Due Date','Payment Amount']
+  ].concat(detailRows));
+  ws2['!cols'] = [28,16,12,14,16,10,14,16].map(function(w){return{wch:w};});
+  XLSX.utils.book_append_sheet(wb, ws2, 'Detail by Client');
+
+  XLSX.writeFile(wb, 'BluegrassMedicare_ClientReport_' + year + '.xlsx');
+}
+
+// ── Events ────────────────────────────────────────────────────────
+document.getElementById('btn-run').addEventListener('click', runReport);
+document.getElementById('btn-export').addEventListener('click', exportExcel);
+document.getElementById('btn-reset').addEventListener('click', function() {
+  document.getElementById('filter-company').value  = '';
+  document.getElementById('filter-product').value  = '';
+  document.getElementById('filter-producer').value = '';
+  document.getElementById('filter-client').value   = '';
+  // Keep year — it's required
+});
+
+// ── Init ──────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
