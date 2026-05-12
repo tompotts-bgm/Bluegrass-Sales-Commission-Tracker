@@ -186,7 +186,7 @@ footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; bor
   // ── Fetch all unmatched transactions ─────────────────────────
   async function fetchUnmatchedTransactions() {
     const resp = await fetch(
-      `${SUPABASE_URL}/rest/v1/transactions?commission_matched=eq.false&select=id,first_name,last_name,company,effective_date,orig_commission,monthly_renewal`,
+      `${SUPABASE_URL}/rest/v1/transactions?commission_matched=eq.false&select=id,firstName,lastName,company,effective_date,orig_commission,monthly_renewal`,
       { headers: HEADERS }
     );
     if (!resp.ok) throw new Error('Failed to fetch transactions: ' + resp.statusText);
@@ -270,7 +270,7 @@ footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; bor
       const matchedCommissionIds = new Set();
 
       for (const tx of transactions) {
-        const txName   = normalizeTransactionName(tx.first_name, tx.last_name);
+        const txName   = normalizeTransactionName(tx.firstName, tx.lastName);
         const txAmount = parseFloat(tx.orig_commission) || parseFloat(tx.monthly_renewal) || 0;
         const txField  = parseFloat(tx.orig_commission) ? 'orig_commission' : 'monthly_renewal';
 
@@ -324,7 +324,7 @@ footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; bor
           const diffNum = parseFloat(diffAmt);
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td>${(tx.first_name || '') + ' ' + (tx.last_name || '')}</td>
+            <td>${(tx.firstName || '') + ' ' + (tx.lastName || '')}</td>
             <td>${tx.company || '—'}</td>
             <td>${fmtDate(tx.effective_date)}</td>
             <td class="amt">${fmtAmt(txAmount)}</td>
