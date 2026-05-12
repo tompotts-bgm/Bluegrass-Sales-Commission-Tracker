@@ -30,7 +30,6 @@
       align-items: center;
       gap: 16px;
     }
-    .header img { height: 56px; width: auto; }
     .header-right {
       border-left: 2px solid #6DB33F;
       padding-left: 16px;
@@ -69,9 +68,7 @@
     }
 
     /* ── MENU ITEMS ── */
-    .menu-item {
-      margin-bottom: 8px;
-    }
+    .menu-item { margin-bottom: 8px; }
 
     .menu-btn {
       width: 100%;
@@ -80,225 +77,189 @@
       gap: 14px;
       padding: 13px 18px;
       background: #fff;
-      border: 1px solid #b8d99a;
+      border: 1px solid #c5dfa8;
       border-radius: 8px;
       cursor: pointer;
       text-decoration: none;
+      color: inherit;
+      transition: background 0.12s, border-color 0.12s;
       font-family: Arial, sans-serif;
-      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    .menu-btn:hover {
-      background: #e8f5de;
-      border-color: #6DB33F;
-      box-shadow: 0 2px 8px rgba(43,72,153,0.10);
-    }
-    .menu-btn.expandable {
-      justify-content: space-between;
-    }
-    .menu-btn.expandable .menu-btn-left {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    .menu-btn.coming-soon {
-      opacity: 0.5;
-      cursor: not-allowed;
-      pointer-events: none;
-      background: #f5f5f5;
-      border-color: #ddd;
-    }
+    .menu-btn:hover { background: #e8f4fd; border-color: #2B4899; }
+    .menu-btn.coming-soon { opacity: 0.55; cursor: not-allowed; pointer-events: none; }
+    .menu-btn.expandable { justify-content: space-between; }
 
-    .menu-icon {
-      font-size: 22px;
-      width: 32px;
-      text-align: center;
-      flex-shrink: 0;
-    }
-    .menu-label {
-      font-size: 14px;
-      font-weight: bold;
-      color: #2B4899;
-    }
-    .menu-desc {
+    .menu-btn-left { display: flex; align-items: center; gap: 14px; }
+    .menu-icon { font-size: 22px; flex-shrink: 0; }
+    .menu-text { display: flex; flex-direction: column; gap: 2px; text-align: left; }
+    .menu-label { font-size: 14px; font-weight: 600; color: #1a1a2e; }
+    .menu-desc { font-size: 12px; color: #777; }
+
+    .coming-badge {
       font-size: 11px;
-      color: #888;
-      margin-top: 1px;
+      background: #fff3e0;
+      color: #e65100;
+      border: 1px solid #ffcc80;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-family: Arial, sans-serif;
+      white-space: nowrap;
     }
-    .menu-text { display: flex; flex-direction: column; }
 
+    /* ── ARROW ── */
     .menu-arrow {
-      font-size: 13px;
+      font-size: 11px;
       color: #aaa;
       transition: transform 0.2s;
       flex-shrink: 0;
     }
     .menu-arrow.open { transform: rotate(90deg); }
 
-    .coming-badge {
-      font-size: 10px;
-      font-weight: bold;
-      background: #f0f0f0;
-      color: #999;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      padding: 2px 7px;
-      font-family: Arial, sans-serif;
-      flex-shrink: 0;
-    }
-
     /* ── SUB-MENU ── */
     .sub-menu {
       display: none;
-      margin-top: 4px;
-      margin-left: 20px;
-      border-left: 2px solid #6DB33F;
-      padding-left: 12px;
+      background: #f5faf2;
+      border: 1px solid #c5dfa8;
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      overflow: hidden;
+      margin-top: -4px;
     }
     .sub-menu.open { display: block; }
 
     .sub-item {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 10px 14px;
-      margin-bottom: 5px;
-      background: #fff;
-      border: 1px solid #c5dfa8;
-      border-radius: 7px;
-      cursor: pointer;
+      gap: 12px;
+      padding: 11px 20px 11px 28px;
+      border-bottom: 1px solid #dcefd3;
       text-decoration: none;
+      color: inherit;
       font-family: Arial, sans-serif;
-      transition: background 0.15s, border-color 0.15s;
+      transition: background 0.1s;
     }
-    .sub-item:hover {
-      background: #dff0cc;
-      border-color: #6DB33F;
-    }
-    .sub-item.coming-soon {
-      opacity: 0.5;
-      cursor: not-allowed;
-      pointer-events: none;
-      background: #f5f5f5;
-    }
-    .sub-icon { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
-    .sub-label { font-size: 13px; font-weight: bold; color: #2B4899; }
-    .sub-desc  { font-size: 11px; color: #888; margin-top: 1px; }
-    .sub-text  { display: flex; flex-direction: column; }
+    .sub-item:last-child { border-bottom: none; }
+    .sub-item:hover { background: #e3f2fd; }
+    .sub-item.coming-soon { opacity: 0.55; cursor: not-allowed; pointer-events: none; }
+
+    .sub-icon { font-size: 16px; flex-shrink: 0; }
+    .sub-text { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+    .sub-label { font-size: 13px; font-weight: 600; color: #1a1a2e; }
+    .sub-desc { font-size: 11px; color: #777; }
     .sub-badge {
       font-size: 10px;
-      font-weight: bold;
-      background: #f0f0f0;
-      color: #999;
-      border: 1px solid #ddd;
+      background: #fff3e0;
+      color: #e65100;
+      border: 1px solid #ffcc80;
       border-radius: 4px;
       padding: 2px 7px;
-      font-family: Arial, sans-serif;
-      margin-left: auto;
+      white-space: nowrap;
     }
 
     /* ── DIVIDER ── */
     .menu-divider {
-      border: none;
-      border-top: 1px solid #c5dfa8;
-      margin: 14px 0;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #999;
+      font-family: Arial, sans-serif;
+      padding: 14px 4px 6px;
     }
 
-    /* ── FOOTER ── */
     footer {
-      text-align: center;
+      margin-top: 2rem;
       font-size: 12px;
-      color: #aaa;
+      color: #888;
+      text-align: center;
       font-family: Arial, sans-serif;
-      margin-top: 22px;
     }
   </style>
 </head>
 <body>
-
 <div class="wrap">
+
   <div class="header">
-    <img src="logo.png" alt="Bluegrass Medicare" />
     <div class="header-right">
-      <div class="header-title">Commission Tracker</div>
-      <div class="header-sub">Bluegrass Medicare — Main Menu</div>
+      <div class="header-title">Bluegrass Medicare</div>
+      <div class="header-sub">Commission Tracker — Main Menu</div>
     </div>
   </div>
 
   <div class="body">
+
     <p class="menu-intro">Select a module below to get started.</p>
 
-    <!-- Client Entry -->
+    <!-- ── Data Entry ── -->
+    <div class="menu-divider">Data Entry</div>
+
     <div class="menu-item">
       <a class="menu-btn" href="client_form.html">
         <span class="menu-icon">👤</span>
         <span class="menu-text">
-          <span class="menu-label">Client Entry</span>
-          <span class="menu-desc">Add, edit, or look up client records</span>
+          <span class="menu-label">Client Entry / Edit</span>
+          <span class="menu-desc">Add and manage client records</span>
         </span>
       </a>
     </div>
 
-    <!-- Transaction Entry -->
     <div class="menu-item">
       <a class="menu-btn" href="transaction_entry.html">
         <span class="menu-icon">📝</span>
         <span class="menu-text">
           <span class="menu-label">Transaction Entry</span>
-          <span class="menu-desc">Record new policy sales and calculate commissions</span>
+          <span class="menu-desc">Record new policy sales and commissions</span>
         </span>
       </a>
     </div>
 
-    <!-- Commission Import -->
     <div class="menu-item">
       <a class="menu-btn" href="commission_import_tool.html">
-        <span class="menu-icon">📂</span>
+        <span class="menu-icon">📊</span>
         <span class="menu-text">
           <span class="menu-label">Commission Import</span>
-          <span class="menu-desc">Upload and map carrier commission spreadsheets</span>
+          <span class="menu-desc">Import carrier spreadsheets — Anthem &amp; Humana active</span>
         </span>
       </a>
     </div>
 
-    <hr class="menu-divider" />
+    <!-- ── Reports ── -->
+    <div class="menu-divider">Reports</div>
 
-    <!-- Reports — expandable -->
     <div class="menu-item">
       <div class="menu-btn expandable" onclick="toggleMenu('reports')">
         <div class="menu-btn-left">
-          <span class="menu-icon">📊</span>
+          <span class="menu-icon">📈</span>
           <span class="menu-text">
             <span class="menu-label">Reports</span>
-            <span class="menu-desc">Commission and client reporting</span>
+            <span class="menu-desc">Commission summaries and client reports</span>
           </span>
         </div>
         <span class="menu-arrow" id="arrow-reports">▶</span>
       </div>
       <div class="sub-menu" id="sub-reports">
         <a class="sub-item" href="commission_report.html">
-          <span class="sub-icon">📈</span>
+          <span class="sub-icon">💰</span>
           <span class="sub-text">
             <span class="sub-label">Commission Report</span>
-            <span class="sub-desc">View and filter commission transactions</span>
+            <span class="sub-desc">Flexible commission summary — 7 view modes</span>
           </span>
         </a>
         <a class="sub-item" href="commission_client_report.html">
           <span class="sub-icon">👥</span>
           <span class="sub-text">
-            <span class="sub-label">Commission Client Report</span>
-            <span class="sub-desc">Alphabetical client commission summary by year</span>
+            <span class="sub-label">Client Commission Report</span>
+            <span class="sub-desc">Alphabetical client report by year</span>
           </span>
         </a>
       </div>
     </div>
 
-    <hr class="menu-divider" />
+    <!-- ── Admin ── -->
+    <div class="menu-divider">Administration</div>
 
-    <!-- Commission Table Edit -->
     <div class="menu-item">
       <div class="menu-btn coming-soon">
-        <span class="menu-icon">⚙️</span>
+        <span class="menu-icon">📋</span>
         <span class="menu-text">
           <span class="menu-label">Commission Table Edit</span>
           <span class="menu-desc">Edit commission rates by year and carrier</span>
@@ -307,7 +268,9 @@
       </div>
     </div>
 
-    <!-- Commission Reconciliation — expandable -->
+    <!-- ── Commission Reconciliation ── -->
+    <div class="menu-divider">Commission Reconciliation</div>
+
     <div class="menu-item">
       <div class="menu-btn expandable" onclick="toggleMenu('recon')">
         <div class="menu-btn-left">
@@ -320,19 +283,26 @@
         <span class="menu-arrow" id="arrow-recon">▶</span>
       </div>
       <div class="sub-menu" id="sub-recon">
-        <div class="sub-item coming-soon">
-          <span class="sub-icon">⚠️</span>
+        <a class="sub-item" href="commission_auto_match.html">
+          <span class="sub-icon">✅</span>
           <span class="sub-text">
-            <span class="sub-label">Exception Report</span>
-            <span class="sub-desc">Flag commissions that don't match expected amounts</span>
+            <span class="sub-label">Commission Auto-Match</span>
+            <span class="sub-desc">Automatic pass — match by name and amount</span>
+          </span>
+        </a>
+        <div class="sub-item coming-soon">
+          <span class="sub-icon">🤝</span>
+          <span class="sub-text">
+            <span class="sub-label">Manual Match</span>
+            <span class="sub-desc">Hand-match commissions that didn't auto-match</span>
           </span>
           <span class="sub-badge">Coming Soon</span>
         </div>
         <div class="sub-item coming-soon">
-          <span class="sub-icon">✅</span>
+          <span class="sub-icon">⚠️</span>
           <span class="sub-text">
-            <span class="sub-label">Commission Matching</span>
-            <span class="sub-desc">Match actual payments to expected commissions</span>
+            <span class="sub-label">Exception Report</span>
+            <span class="sub-desc">Flag commissions with no match found</span>
           </span>
           <span class="sub-badge">Coming Soon</span>
         </div>
@@ -342,7 +312,7 @@
   </div>
 </div>
 
-<footer>Bluegrass Medicare &nbsp;·&nbsp; Commission Tracker &nbsp;·&nbsp; v1.0</footer>
+<footer>Bluegrass Medicare &nbsp;·&nbsp; Commission Tracker &nbsp;·&nbsp; v1.1</footer>
 
 <script>
   function toggleMenu(id) {
