@@ -844,20 +844,39 @@
     if (!pt) { showStatus('Please select a Product Type.', true); return; }
 
     const result = calcCommissions();
+
+    // Pull address from autofilled client fields
+    const clientAddress  = document.getElementById('cfAddress').value || null;
+    const clientCity     = document.getElementById('cfCity').value    || null;
+    const clientState    = document.getElementById('cfState').value   || null;
+    const clientZip      = document.getElementById('cfZip').value     || null;
+
+    // Pull monthly renewal and renewal start date from calc result
+    const monthlyRenewalAmt   = (result && !result.error && result.monthlyRenewal) ? result.monthlyRenewal : null;
+    const renewalStartDate    = (result && !result.error && result.renewalStartYear) ? `${result.renewalStartYear}-01-01` : null;
+
     const record = {
-      client_id:       selectedClientId,
-      policy_status:   document.getElementById('policyStatus').value,
-      broker:          document.getElementById('broker').value,
-      date_written:    document.getElementById('dateWritten').value,
-      effective_date:  document.getElementById('effectiveDate').value,
-      election_period: ep.value,
-      company:         document.getElementById('company').value,
-      product_type:    pt.value,
-      new_to_medicare: ynState['newMedicare'] || null,
-      new_client:      ynState['newClient'] || null,
-      existing_client: ynState['existingClient'] || null,
-      orig_commission: getOrigCommissionValue(),
-      commission_records: result && !result.error ? result.records : [],
+      client_id:              selectedClientId,
+      policy_status:          document.getElementById('policyStatus').value,
+      broker:                 document.getElementById('broker').value,
+      date_written:           document.getElementById('dateWritten').value,
+      effective_date:         document.getElementById('effectiveDate').value,
+      election_period:        ep.value,
+      company:                document.getElementById('company').value,
+      product_type:           pt.value,
+      new_to_medicare:        ynState['newMedicare'] || null,
+      new_client:             ynState['newClient']   || null,
+      existing_client:        ynState['existingClient'] || null,
+      orig_commission:        getOrigCommissionValue(),
+      monthly_renewal:        monthlyRenewalAmt,
+      renewal_start_date:     renewalStartDate,
+      address:                clientAddress,
+      city:                   clientCity,
+      state:                  clientState,
+      zip:                    clientZip,
+      commission_matched:     false,
+      commission_matched_date: null,
+      commission_records:     result && !result.error ? result.records : [],
     };
 
     console.log('=== TRANSACTION RECORD ===', record);
