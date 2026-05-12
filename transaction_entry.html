@@ -855,7 +855,7 @@
       result.records.forEach((r,i) => console.log(`  [${i+1}] ${r.type.toUpperCase()} | ${r.label} | ${r.date} | $${r.amount.toFixed(2)}`));
     }
 
-    showStatus('Transaction saved successfully!', false, false);
+    showStatus('Saved! Choose Copy (same client) or New Transaction below.', false, true);
     document.getElementById('btnCopy').classList.add('visible');
     document.getElementById('btnNew').classList.add('visible');
   }
