@@ -835,7 +835,8 @@
   }
 
   // ── SAVE ──────────────────────────────────────────────────────────
-  function saveRecord() {
+  async function saveRecord() {
+    console.log('DEBUG: saveRecord() called, selectedClientId =', selectedClientId);
     if (!selectedClientId) { showStatus('Please select a client before saving.', true); return; }
     if (!document.getElementById('broker').value) { showStatus('Please select a broker.', true); return; }
     const ep = document.querySelector('input[name="electionPeriod"]:checked');
@@ -879,15 +880,35 @@
       commission_records:     result && !result.error ? result.records : [],
     };
 
-    console.log('=== TRANSACTION RECORD ===', record);
-    if (result && !result.error && result.records.length) {
-      console.log(`Commission records (${result.records.length}):`);
-      result.records.forEach((r,i) => console.log(`  [${i+1}] ${r.type.toUpperCase()} | ${r.label} | ${r.date} | $${r.amount.toFixed(2)}`));
+    // ── POST to Supabase ─────────────────────────────────────
+    console.log('DEBUG: reached Supabase save block');
+    console.log('DEBUG: client_id =', selectedClientId);
+    console.log('DEBUG: record =', JSON.stringify(record, null, 2));
+    showStatus('Saving…', false, true);
+    try {
+      console.log('DEBUG: firing fetch to', `${SUPABASE_URL}/rest/v1/transactions`);
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/transactions`, {
+        method:  'POST',
+        headers: HEADERS,
+        body:    JSON.stringify(record)
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        const msg = err.message || err.error || resp.statusText;
+        showStatus(`Save failed: ${msg}`, true, true);
+        return;
+      }
+      const saved = await resp.json();
+      const savedId = Array.isArray(saved) ? saved[0]?.id : saved?.id;
+      showStatus(
+        `Saved! Transaction ID: ${savedId || '—'}  ·  Choose Copy or New Transaction below.`,
+        false, true
+      );
+      document.getElementById('btnCopy').classList.add('visible');
+      document.getElementById('btnNew').classList.add('visible');
+    } catch (err) {
+      showStatus(`Network error: ${err.message}`, true, true);
     }
-
-    showStatus('Saved! Choose Copy (same client) or New Transaction below.', false, true);
-    document.getElementById('btnCopy').classList.add('visible');
-    document.getElementById('btnNew').classList.add('visible');
   }
 
   // ── RESET ─────────────────────────────────────────────────────────
