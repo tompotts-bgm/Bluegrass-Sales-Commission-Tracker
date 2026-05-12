@@ -561,17 +561,19 @@
   // ── RECALC ────────────────────────────────────────────────────────
   function recalc() {
     const result = calcCommissions();
+    const el = document.getElementById('origCommission');
 
-    // Auto-fill the originating commission field (unless user has manually overridden)
-    if (result && !result.error && !origCommissionManual) {
-      const autoVal = result.type === 'mapd' ? result.origCommission
-                    : result.type === 'supplement' ? result.origCommission
-                    : null;
-      const el = document.getElementById('origCommission');
-      if (autoVal !== null && autoVal !== undefined) {
-        el.value = '$' + autoVal.toFixed(2);
-      } else if (result.type !== 'other') {
-        el.value = '';
+    if (!origCommissionManual) {
+      if (result && !result.error) {
+        if ((result.type === 'mapd' || result.type === 'supplement') && result.origCommission !== undefined) {
+          el.value = '$' + result.origCommission.toFixed(2);
+          el.classList.remove('manual-entry');
+        } else if (result.type !== 'other') {
+          el.value = '';
+        }
+      } else {
+        const ep = document.querySelector('input[name="electionPeriod"]:checked');
+        if (!ep || ep.value !== 'Other') el.value = '';
       }
     }
 
@@ -882,14 +884,28 @@
 
   // ── COPY ──────────────────────────────────────────────────────────
   function copyRecord() {
-    clearNameFields();
-    document.getElementById('clientId').value = '';
-    selectedClientId = null;
+    // Keep client name/address — clear everything else
     document.getElementById('dateWritten').value = new Date().toISOString().split('T')[0];
+    const nd = new Date(); nd.setMonth(nd.getMonth()+1); nd.setDate(1);
+    document.getElementById('effectiveDate').value = nd.toISOString().split('T')[0];
+    document.getElementById('policyStatus').value = 'Active';
+    document.getElementById('broker').value = '';
+    document.getElementById('company').value = '';
+    document.getElementById('monthlyPremium').value = '';
+    document.getElementById('origCommission').value = '';
+    document.getElementById('origCommission').classList.remove('manual-entry');
+    document.getElementById('origCommissionNote').textContent = 'Auto-calculated — or enter manually to override';
+    document.getElementById('suppPremiumRow').classList.remove('show');
+    document.querySelectorAll('input[type=radio]').forEach(r => r.checked = false);
+    Object.keys(ynState).forEach(k => delete ynState[k]);
+    document.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('active-yes','active-no','disabled'));
+    document.getElementById('existingClientRow').style.display = 'none';
+    document.getElementById('existingFlag').classList.remove('show');
     document.getElementById('btnCopy').classList.remove('visible');
+    document.getElementById('sidePanel').classList.remove('visible');
     origCommissionManual = false;
-    showStatus('Record copied — select a new client to continue.', false, true);
-    document.getElementById('clientId').focus();
+    showStatus('Ready for next entry — client retained.', false, true);
+    document.getElementById('broker').focus();
   }
 
   // ── EXIT ──────────────────────────────────────────────────────────
