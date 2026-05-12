@@ -543,11 +543,11 @@
       ? getOrigCommissionValue()
       : origCommission;
 
-    // 12 renewal records
+    // 12 renewal records — orig_commission is null on renewals
     const renewalRecords = [];
     for (let m = 1; m <= 12; m++) {
       const mo = String(m).padStart(2,'0');
-      renewalRecords.push({ label:`Renewal ${renewalStartYear}-${mo}`, type:'renewal', date:`${renewalStartYear}-${mo}-01`, amount:monthlyRenewal, note:'Monthly renewal' });
+      renewalRecords.push({ label:`Renewal ${renewalStartYear}-${mo}`, type:'renewal', date:`${renewalStartYear}-${mo}-01`, orig_commission:null, amount:monthlyRenewal, monthly_renewal:monthlyRenewal, note:'Monthly renewal' });
     }
 
     // 12 override records (same year as renewals)
@@ -555,7 +555,7 @@
     if (monthlyOverride > 0) {
       for (let m = 1; m <= 12; m++) {
         const mo = String(m).padStart(2,'0');
-        overrideRecords.push({ label:`Override ${renewalStartYear}-${mo}`, type:'override', date:`${renewalStartYear}-${mo}-01`, amount:monthlyOverride, note:'Monthly override' });
+        overrideRecords.push({ label:`Override ${renewalStartYear}-${mo}`, type:'override', date:`${renewalStartYear}-${mo}-01`, orig_commission:null, amount:monthlyOverride, monthly_renewal:null, note:'Monthly override' });
       }
     }
 
@@ -565,7 +565,7 @@
       renewal, monthlyRenewal, monthlyOverride,
       origCommission, displayOrig, origNote, renewalStartYear,
       records:[
-        { label:'Originating Commission', type:'originating', date:effDate, amount:displayOrig, note:origNote },
+        { label:'Originating Commission', type:'originating', date:effDate, orig_commission:displayOrig, amount:displayOrig, monthly_renewal:null, note:origNote },
         ...renewalRecords,
         ...overrideRecords
       ],
