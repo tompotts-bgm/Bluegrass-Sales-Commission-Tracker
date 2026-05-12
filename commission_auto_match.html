@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Commission Auto-Match</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; color: #222; background: #f4f6f9; padding: 2rem; }
+.container { max-width: 1100px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 2rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; color: #1a1a2e; }
+p.sub { font-size: 13px; color: #666; margin-bottom: 1.5rem; }
+
+/* Status bar */
+#status-bar { background: #f0f4ff; border: 1px solid #c5cff5; border-radius: 8px; padding: 10px 16px; font-size: 13px; color: #333; margin-bottom: 1.25rem; display: none; }
+#status-bar.error { background: #fff0f0; border-color: #ffcdd2; color: #c62828; }
+#status-bar.success { background: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; }
+
+/* Controls */
+.controls { display: flex; gap: 10px; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center; }
+button { font-size: 13px; padding: 9px 20px; border-radius: 7px; border: 1px solid #ccc; background: #fff; color: #333; cursor: pointer; font-weight: 500; transition: background 0.1s; }
+button:hover { background: #f0f0f0; }
+button.primary { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+button.primary:hover { background: #2d2d5e; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.counter { font-size: 13px; color: #666; margin-left: auto; }
+
+/* Summary cards */
+.summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+.card { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 10px; padding: 14px 16px; text-align: center; }
+.card .num { font-size: 28px; font-weight: 700; color: #1a1a2e; }
+.card .label { font-size: 12px; color: #888; margin-top: 4px; }
+.card.green .num { color: #2e7d32; }
+.card.orange .num { color: #e65100; }
+
+/* Results table */
+#results-section { display: none; }
+#results-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; color: #333; }
+.table-wrap { overflow-x: auto; border: 1px solid #e0e0e0; border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #1a1a2e; color: #fff; padding: 9px 12px; text-align: left; font-weight: 600; white-space: nowrap; }
+td { padding: 8px 12px; border-bottom: 1px solid #eee; white-space: nowrap; }
+tr:nth-child(even) td { background: #f5f7fa; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #e8f4fd; }
+.amt { font-family: monospace; }
+.amt-diff { font-size: 11px; color: #888; }
+.amt-diff.within { color: #2e7d32; }
+.badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 5px; font-weight: 600; }
+.badge-matched { background: #e8f5e9; color: #2e7d32; }
+.badge-pending { background: #fff8e1; color: #f57f17; }
+
+/* No results */
+.empty { text-align: center; padding: 3rem; color: #aaa; font-size: 14px; }
+
+/* Progress */
+#progress-wrap { display: none; margin-bottom: 1rem; }
+.progress-bar-bg { background: #e0e0e0; border-radius: 6px; height: 8px; overflow: hidden; }
+.progress-bar-fill { background: #1a1a2e; height: 8px; border-radius: 6px; transition: width 0.2s; width: 0%; }
+.progress-label { font-size: 12px; color: #888; margin-top: 4px; }
+
+footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; border-top: 1px solid #eee; padding-top: 1rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔍 Commission Auto-Match</h1>
+  <p class="sub">Automatically matches unmatched commission payments against recorded transactions by client name and amount (within $1.00).</p>
+
+  <div id="status-bar"></div>
+
+  <div class="controls">
+    <button class="primary" id="btn-run">▶ Run Auto-Match</button>
+    <button id="btn-clear" style="display:none">↩ Reset</button>
+    <span class="counter" id="counter"></span>
+  </div>
+
+  <div id="progress-wrap">
+    <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill"></div></div>
+    <div class="progress-label" id="progress-label">Starting…</div>
+  </div>
+
+  <div class="summary" id="summary" style="display:none">
+    <div class="card"><div class="num" id="c-transactions">—</div><div class="label">Unmatched Transactions</div></div>
+    <div class="card"><div class="num" id="c-commissions">—</div><div class="label">Unmatched Commissions</div></div>
+    <div class="card green"><div class="num" id="c-matched">—</div><div class="label">Matched This Run</div></div>
+    <div class="card orange"><div class="num" id="c-unresolved">—</div><div class="label">Still Unresolved</div></div>
+  </div>
+
+  <div id="results-section">
+    <h3>Matched Pairs <span id="match-count" style="font-weight:400;color:#888;font-size:13px;"></span></h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Client Name</th>
+          <th>Company</th>
+          <th>Effective Date</th>
+          <th>Transaction Amt</th>
+          <th>Paid Amt</th>
+          <th>Difference</th>
+          <th>Carrier File</th>
+          <th>Trans ID</th>
+          <th>Status</th>
+        </tr></thead>
+        <tbody id="results-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="empty-msg" class="empty" style="display:none">No matches found. Try the manual match tool for unresolved records.</div>
+
+  <footer>Commission Auto-Match &nbsp;·&nbsp; Matches by client name + amount within $1.00</footer>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
+  const HEADERS = {
+    'Content-Type':  'application/json',
+    'apikey':        SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY,
+    'Prefer':        'return=representation'
+  };
+
+  // ── Name normalization ────────────────────────────────────────
+  // Handles "SMITH, JOHN", "JOHN SMITH", "Smith John" → "john smith"
+  function normalizeName(raw) {
+    if (!raw) return '';
+    let s = raw.toString().trim().toUpperCase();
+    // If contains comma → assume "LAST, FIRST" → flip to "FIRST LAST"
+    if (s.includes(',')) {
+      const parts = s.split(',').map(p => p.trim());
+      s = (parts[1] + ' ' + parts[0]).trim();
+    }
+    return s.toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  function normalizeTransactionName(firstName, lastName) {
+    const f = (firstName || '').trim();
+    const l = (lastName  || '').trim();
+    return (f + ' ' + l).trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  // ── Amount helpers ────────────────────────────────────────────
+  function amountMatch(a, b) {
+    return Math.abs((parseFloat(a) || 0) - (parseFloat(b) || 0)) <= 1.00;
+  }
+
+  function diff(a, b) {
+    return ((parseFloat(a) || 0) - (parseFloat(b) || 0)).toFixed(2);
+  }
+
+  // ── UI helpers ────────────────────────────────────────────────
+  function setStatus(msg, type = '') {
+    const el = document.getElementById('status-bar');
+    el.textContent = msg;
+    el.className = type;
+    el.style.display = msg ? 'block' : 'none';
+  }
+
+  function setProgress(pct, label) {
+    document.getElementById('progress-wrap').style.display = 'block';
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-label').textContent = label;
+  }
+
+  function hideProgress() {
+    document.getElementById('progress-wrap').style.display = 'none';
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    const dt = new Date(d);
+    if (isNaN(dt)) return d;
+    return (dt.getUTCMonth()+1) + '/' + dt.getUTCDate() + '/' + dt.getUTCFullYear();
+  }
+
+  function fmtAmt(v) {
+    const n = parseFloat(v);
+    return isNaN(n) ? '—' : '$' + n.toFixed(2);
+  }
+
+  // ── Fetch all unmatched transactions ─────────────────────────
+  async function fetchUnmatchedTransactions() {
+    const resp = await fetch(
+      `${SUPABASE_URL}/rest/v1/transactions?commission_matched=eq.false&select=id,first_name,last_name,company,effective_date,orig_commission,monthly_renewal`,
+      { headers: HEADERS }
+    );
+    if (!resp.ok) throw new Error('Failed to fetch transactions: ' + resp.statusText);
+    return await resp.json();
+  }
+
+  // ── Fetch all unmatched commissions with carrier file name ────
+  async function fetchUnmatchedCommissions() {
+    const resp = await fetch(
+      `${SUPABASE_URL}/rest/v1/commissions?commission_matched=eq.false&select=id,name_group_name,payment_amount,source_company,import_id`,
+      { headers: HEADERS }
+    );
+    if (!resp.ok) throw new Error('Failed to fetch commissions: ' + resp.statusText);
+    const commissions = await resp.json();
+
+    // Fetch import log to get filenames
+    const importIds = [...new Set(commissions.map(c => c.import_id).filter(Boolean))];
+    let importMap = {};
+    if (importIds.length) {
+      const idList = importIds.map(id => `id.eq.${id}`).join(',');
+      const ir = await fetch(
+        `${SUPABASE_URL}/rest/v1/commission_imports?or=(${idList})&select=id,file_name`,
+        { headers: HEADERS }
+      );
+      if (ir.ok) {
+        const imports = await ir.json();
+        imports.forEach(i => { importMap[i.id] = i.file_name; });
+      }
+    }
+    commissions.forEach(c => { c._file_name = importMap[c.import_id] || c.source_company || '—'; });
+    return commissions;
+  }
+
+  // ── Stamp matched pair in Supabase ───────────────────────────
+  async function stampMatch(transactionId, commissionId) {
+    const today = new Date().toISOString().split('T')[0];
+
+    const [tr, cr] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/transactions?id=eq.${transactionId}`, {
+        method: 'PATCH',
+        headers: HEADERS,
+        body: JSON.stringify({ commission_matched: true, commission_matched_date: today })
+      }),
+      fetch(`${SUPABASE_URL}/rest/v1/commissions?id=eq.${commissionId}`, {
+        method: 'PATCH',
+        headers: HEADERS,
+        body: JSON.stringify({ commission_matched: true, commission_matched_date: today })
+      })
+    ]);
+
+    if (!tr.ok || !cr.ok) throw new Error('Failed to update matched records');
+  }
+
+  // ── Main auto-match routine ───────────────────────────────────
+  async function runAutoMatch() {
+    document.getElementById('btn-run').disabled = true;
+    document.getElementById('summary').style.display = 'none';
+    document.getElementById('results-section').style.display = 'none';
+    document.getElementById('empty-msg').style.display = 'none';
+    document.getElementById('results-body').innerHTML = '';
+    setStatus('Loading unmatched records…');
+
+    try {
+      setProgress(10, 'Fetching unmatched transactions…');
+      const transactions = await fetchUnmatchedTransactions();
+
+      setProgress(30, 'Fetching unmatched commission payments…');
+      const commissions = await fetchUnmatchedCommissions();
+
+      setStatus(`Loaded ${transactions.length} transactions and ${commissions.length} commission records. Running match…`);
+      setProgress(50, 'Comparing records…');
+
+      // Build normalized lookup of commissions
+      const commNorm = commissions.map(c => ({
+        ...c,
+        _normName: normalizeName(c.name_group_name),
+        _amount:   parseFloat(c.payment_amount) || 0
+      }));
+
+      const matchedPairs = [];
+      const matchedCommissionIds = new Set();
+
+      for (const tx of transactions) {
+        const txName   = normalizeTransactionName(tx.first_name, tx.last_name);
+        const txAmount = parseFloat(tx.orig_commission) || parseFloat(tx.monthly_renewal) || 0;
+        const txField  = parseFloat(tx.orig_commission) ? 'orig_commission' : 'monthly_renewal';
+
+        // Find a commission record that matches name AND amount, not already matched
+        const candidate = commNorm.find(c =>
+          !matchedCommissionIds.has(c.id) &&
+          c._normName === txName &&
+          amountMatch(txAmount, c._amount)
+        );
+
+        if (candidate) {
+          matchedCommissionIds.add(candidate.id);
+          matchedPairs.push({ tx, commission: candidate, txAmount, txField });
+        }
+      }
+
+      setProgress(70, `Found ${matchedPairs.length} matches — saving to database…`);
+
+      // Stamp all matched pairs
+      let saved = 0;
+      for (const pair of matchedPairs) {
+        await stampMatch(pair.tx.id, pair.commission.id);
+        saved++;
+        setProgress(70 + Math.round((saved / matchedPairs.length) * 25), `Saving match ${saved} of ${matchedPairs.length}…`);
+      }
+
+      setProgress(100, 'Done!');
+      hideProgress();
+
+      // Update summary cards
+      const unresolved = transactions.length - matchedPairs.length;
+      document.getElementById('c-transactions').textContent  = transactions.length;
+      document.getElementById('c-commissions').textContent   = commissions.length;
+      document.getElementById('c-matched').textContent       = matchedPairs.length;
+      document.getElementById('c-unresolved').textContent    = unresolved;
+      document.getElementById('summary').style.display       = 'grid';
+
+      if (!matchedPairs.length) {
+        setStatus('No exact matches found. Use the manual match tool to review unresolved records.', 'error');
+        document.getElementById('empty-msg').style.display = 'block';
+      } else {
+        setStatus(`Auto-match complete — ${matchedPairs.length} pair${matchedPairs.length > 1 ? 's' : ''} matched and saved.`, 'success');
+
+        // Render results table
+        document.getElementById('match-count').textContent = `(${matchedPairs.length} pair${matchedPairs.length > 1 ? 's' : ''})`;
+        const tbody = document.getElementById('results-body');
+        matchedPairs.forEach(pair => {
+          const { tx, commission, txAmount } = pair;
+          const paidAmt = commission._amount;
+          const diffAmt = diff(txAmount, paidAmt);
+          const diffNum = parseFloat(diffAmt);
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${(tx.first_name || '') + ' ' + (tx.last_name || '')}</td>
+            <td>${tx.company || '—'}</td>
+            <td>${fmtDate(tx.effective_date)}</td>
+            <td class="amt">${fmtAmt(txAmount)}</td>
+            <td class="amt">${fmtAmt(paidAmt)}</td>
+            <td class="amt-diff ${Math.abs(diffNum) <= 1 ? 'within' : ''}">
+              ${diffNum === 0 ? 'Exact' : (diffNum > 0 ? '+' : '') + diffAmt}
+            </td>
+            <td>${commission._file_name}</td>
+            <td style="color:#888;font-size:12px">#${tx.id}</td>
+            <td><span class="badge badge-matched">✓ Matched</span></td>
+          `;
+          tbody.appendChild(tr);
+        });
+        document.getElementById('results-section').style.display = 'block';
+      }
+
+      document.getElementById('btn-clear').style.display = 'inline-block';
+      document.getElementById('counter').textContent = '';
+
+    } catch (err) {
+      hideProgress();
+      setStatus('Error: ' + err.message, 'error');
+    }
+
+    document.getElementById('btn-run').disabled = false;
+  }
+
+  // ── Wire up buttons ───────────────────────────────────────────
+  document.getElementById('btn-run').addEventListener('click', runAutoMatch);
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    document.getElementById('summary').style.display       = 'none';
+    document.getElementById('results-section').style.display = 'none';
+    document.getElementById('empty-msg').style.display     = 'none';
+    document.getElementById('results-body').innerHTML      = '';
+    document.getElementById('btn-clear').style.display     = 'none';
+    document.getElementById('status-bar').style.display    = 'none';
+  });
+</script>
+</body>
+</html>
