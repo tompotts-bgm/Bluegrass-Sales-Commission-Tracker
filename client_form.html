@@ -376,6 +376,10 @@
 
   async function saveClient(silent = false) {
     const data = collectForm();
+    if (!data.status) {
+      showStatus('Please select a Status before saving.', true, true);
+      return false;
+    }
     if (!data.first_name || !data.last_name) {
       showStatus('First Name and Last Name are required.', true, true);
       return false;
