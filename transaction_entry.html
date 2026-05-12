@@ -6,789 +6,893 @@
   <title>Bluegrass Medicare — New Policy Transaction</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #d8eecb; font-family: Georgia, serif; padding: 30px 16px; }
 
-    body {
-      background: #d8eecb;
-      font-family: Georgia, serif;
-      padding: 30px 16px;
-    }
+    .page-layout { display: flex; gap: 18px; max-width: 1260px; margin: 0 auto; align-items: flex-start; }
+    .wrap { flex: 1; min-width: 0; border-radius: 10px; overflow: visible; box-shadow: 0 2px 14px rgba(0,0,0,0.12); }
 
-    .wrap {
-      max-width: 820px;
-      margin: 0 auto;
-      border-radius: 10px;
-      overflow: visible;
-      box-shadow: 0 2px 14px rgba(0,0,0,0.12);
-    }
+    /* ── SIDE PANEL ── */
+    .side-panel { width: 340px; flex-shrink: 0; background: #fff; border: 1px solid #c5dfa8; border-radius: 10px; box-shadow: 0 2px 14px rgba(0,0,0,0.10); overflow: hidden; display: none; }
+    .side-panel.visible { display: block; }
+    .sp-header { background: #2B4899; color: #fff; font-family: Arial, sans-serif; font-size: 13px; font-weight: bold; padding: 10px 16px; letter-spacing: 0.04em; }
+    .sp-body { padding: 12px 14px; }
+
+    /* Record card styles */
+    .rec-card { background: #f4fbee; border: 1px solid #b8d99a; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; font-family: Arial, sans-serif; }
+    .rec-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #c5dfa8; }
+    .rec-card-type { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; color: #2B4899; }
+    .rec-card-amount { font-size: 15px; font-weight: bold; color: #4a9e2a; }
+    .rec-card-row { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; color: #555; }
+    .rec-card-row .rck { color: #888; }
+    .rec-card-row .rcv { font-weight: bold; color: #333; }
+
+    .rec-group-label { font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #2B4899; border-bottom: 1.5px solid #6DB33F; padding-bottom: 3px; margin: 10px 0 6px; font-family: Arial, sans-serif; }
+
+    .rec-summary { background: #2B4899; color: #fff; border-radius: 8px; padding: 10px 12px; margin-top: 10px; font-family: Arial, sans-serif; }
+    .rec-summary-row { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; }
+    .rec-summary-row.total { font-size: 13px; font-weight: bold; border-top: 1px solid rgba(255,255,255,0.3); margin-top: 4px; padding-top: 6px; }
+
+    .sp-error { font-size: 12px; font-family: Arial, sans-serif; color: #c0392b; background: #fdecea; border: 1px solid #f5c6c6; border-radius: 6px; padding: 8px 10px; }
+    .sp-note { font-size: 11px; font-family: Arial, sans-serif; color: #888; font-style: italic; margin-top: 8px; line-height: 1.5; }
+
+    /* renewal mini list */
+    .renewal-list { font-family: Arial, sans-serif; font-size: 11px; }
+    .renewal-list-item { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px solid #e8f4e0; color: #444; }
+    .renewal-list-item:last-child { border-bottom: none; }
+    .renewal-list-item .rl-date { color: #666; }
+    .renewal-list-item .rl-amt { font-weight: bold; color: #2B4899; }
 
     /* ── HEADER ── */
-    .header {
-      background: #2B4899;
-      padding: 14px 24px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      border-radius: 10px 10px 0 0;
-    }
+    .header { background: #2B4899; padding: 14px 24px; display: flex; align-items: center; gap: 16px; border-radius: 10px 10px 0 0; }
     .header img { height: 52px; width: auto; }
     .header-text { display: flex; flex-direction: column; gap: 4px; border-left: 2px solid #6DB33F; padding-left: 16px; }
     .header-title { color: #fff; font-size: 15px; font-weight: bold; letter-spacing: 0.02em; }
-    .header-status {
-      font-size: 13px;
-      font-family: Arial, sans-serif;
-      color: #fff;
-      font-weight: bold;
-      min-height: 16px;
-      transition: opacity 0.4s;
-    }
+    .header-status { font-size: 13px; font-family: Arial, sans-serif; color: #fff; font-weight: bold; min-height: 16px; transition: opacity 0.4s; }
     .header-status.fade { opacity: 0; }
     .header-status.error { color: #f4a0a0; }
     .header-status.pulse-msg { animation: msgPulse 0.7s ease 3; }
-    @keyframes msgPulse {
-      0%   { opacity: 1; }
-      50%  { opacity: 0.2; }
-      100% { opacity: 1; }
-    }
+    @keyframes msgPulse { 0%{opacity:1}50%{opacity:0.2}100%{opacity:1} }
 
     /* ── BODY ── */
-    .body {
-      background: #f4fbee;
-      border: 1px solid #c5dfa8;
-      border-top: none;
-      border-radius: 0 0 10px 10px;
-      padding: 22px 26px 28px;
-    }
-
-    /* ── SECTIONS ── */
+    .body { background: #f4fbee; border: 1px solid #c5dfa8; border-top: none; border-radius: 0 0 10px 10px; padding: 22px 26px 28px; }
     .section { margin-bottom: 22px; }
-    .section-label {
-      font-size: 11px;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #2B4899;
-      border-bottom: 2px solid #6DB33F;
-      padding-bottom: 4px;
-      margin-bottom: 14px;
-      font-family: Arial, sans-serif;
-    }
+    .section-label { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #2B4899; border-bottom: 2px solid #6DB33F; padding-bottom: 4px; margin-bottom: 14px; font-family: Arial, sans-serif; }
 
-    /* ── GRID ROWS ── */
     .row { display: grid; gap: 14px; margin-bottom: 12px; }
-    .row-1   { grid-template-columns: 1fr; }
-    .row-2   { grid-template-columns: 1fr 1fr; }
-    .row-3   { grid-template-columns: 2fr 0.6fr 2fr; }
-    .row-4   { grid-template-columns: 1fr 1fr 1fr 1fr; }
-    .row-id  { grid-template-columns: 180px 1fr; align-items: end; }
+    .row-1 { grid-template-columns: 1fr; }
+    .row-2 { grid-template-columns: 1fr 1fr; }
+    .row-3 { grid-template-columns: 2fr 0.6fr 2fr; }
+    .row-id { grid-template-columns: 180px 1fr; align-items: end; }
 
-    /* ── LABELS & INPUTS ── */
     .field { display: flex; flex-direction: column; gap: 3px; }
-    label {
-      font-size: 12px;
-      color: #4a5568;
-      font-family: Arial, sans-serif;
-      font-weight: normal;
-    }
-    input[type=text], input[type=date], input[type=number], select {
-      width: 100%;
-      font-size: 14px;
-      padding: 7px 10px;
-      border: 1px solid #b8d99a;
-      border-radius: 6px;
-      background: #fff;
-      color: #222;
-      font-family: Arial, sans-serif;
+    label { font-size: 12px; color: #4a5568; font-family: Arial, sans-serif; font-weight: normal; }
+
+    input[type=text], input[type=date], select {
+      width: 100%; font-size: 14px; padding: 7px 10px;
+      border: 1px solid #b8d99a; border-radius: 6px;
+      background: #fff; color: #222; font-family: Arial, sans-serif;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
-    input[type=text]:focus, input[type=date]:focus,
-    input[type=number]:focus, select:focus {
-      outline: none;
-      border-color: #2B4899;
-      box-shadow: 0 0 0 2px rgba(43,72,153,0.15);
-    }
-    input.readonly-field {
-      background: #eef5e8;
-      color: #555;
-      cursor: not-allowed;
-    }
-    input.autofilled {
-      background: #e8f4e0;
-      border-color: #6DB33F;
-      color: #2a4a1a;
-    }
+    input:focus, select:focus { outline: none; border-color: #2B4899; box-shadow: 0 0 0 2px rgba(43,72,153,0.15); }
+    input.readonly-field { background: #eef5e8; color: #555; cursor: not-allowed; }
+    input.autofilled { background: #e8f4e0; border-color: #6DB33F; color: #2a4a1a; }
+    input.manual-entry { background: #fff8e1; border-color: #f0c040; color: #333; }
 
-    /* ── CLIENT LOOKUP ── */
     .lookup-wrap { position: relative; }
-    .lookup-results {
-      display: none;
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: #fff;
-      border: 1px solid #2B4899;
-      border-top: none;
-      border-radius: 0 0 6px 6px;
-      z-index: 100;
-      max-height: 160px;
-      overflow-y: auto;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.12);
-    }
+    .lookup-results { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #2B4899; border-top: none; border-radius: 0 0 6px 6px; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.12); }
     .lookup-results.open { display: block; }
-    .lookup-item {
-      padding: 8px 12px;
-      font-size: 13px;
-      cursor: pointer;
-      font-family: Arial, sans-serif;
-      border-bottom: 1px solid #eee;
-      color: #222;
-    }
+    .lookup-item { padding: 8px 12px; font-size: 13px; cursor: pointer; font-family: Arial, sans-serif; border-bottom: 1px solid #eee; color: #222; }
     .lookup-item:hover { background: #e8f4e0; color: #2B4899; }
     .lookup-item:last-child { border-bottom: none; }
+    .lookup-item.no-results { color: #999; cursor: default; }
+    .lookup-item.searching { color: #2B4899; font-style: italic; cursor: default; }
 
-    /* ── RADIO / TOGGLE GROUPS ── */
-    .radio-group, .toggle-group {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-      padding: 4px 0;
-    }
-    .radio-group label, .toggle-group label {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 13px;
-      cursor: pointer;
-      font-family: Arial, sans-serif;
-      color: #333;
-      font-weight: normal;
-    }
-    .radio-group input[type=radio], .toggle-group input[type=radio] {
-      width: auto;
-      accent-color: #2B4899;
-    }
+    .radio-group { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 4px 0; }
+    .radio-group label { display: flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; font-family: Arial, sans-serif; color: #333; font-weight: normal; }
+    .radio-group input[type=radio] { width: auto; accent-color: #2B4899; }
 
-    /* Y/N toggle buttons */
     .yn-group { display: flex; gap: 0; }
-    .yn-btn {
-      padding: 7px 22px;
-      font-size: 13px;
-      font-family: Arial, sans-serif;
-      font-weight: bold;
-      border: 1px solid #b8d99a;
-      cursor: pointer;
-      background: #fff;
-      color: #555;
-      transition: background 0.15s, color 0.15s;
-    }
+    .yn-btn { padding: 7px 22px; font-size: 13px; font-family: Arial, sans-serif; font-weight: bold; border: 1px solid #b8d99a; cursor: pointer; background: #fff; color: #555; transition: background 0.15s, color 0.15s; }
     .yn-btn:first-child { border-radius: 6px 0 0 6px; border-right: none; }
     .yn-btn:last-child  { border-radius: 0 6px 6px 0; }
     .yn-btn.active-yes  { background: #2B4899; color: #fff; border-color: #2B4899; }
     .yn-btn.active-no   { background: #888; color: #fff; border-color: #888; }
+    .yn-btn.disabled    { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
 
-    /* ── EXISTING CLIENT FLAG ── */
-    .existing-flag {
-      display: none;
-      background: #fff8e1;
-      border: 1px solid #f0c040;
-      border-radius: 6px;
-      padding: 10px 14px;
-      font-size: 13px;
-      font-family: Arial, sans-serif;
-      color: #7a5c00;
-      margin-top: 8px;
-    }
+    .existing-flag { display: none; background: #fff8e1; border: 1px solid #f0c040; border-radius: 6px; padding: 10px 14px; font-size: 13px; font-family: Arial, sans-serif; color: #7a5c00; margin-top: 8px; }
     .existing-flag.show { display: block; }
 
-    /* ── PRODUCT TYPE CHECKBOXES ── */
-    .product-group {
-      display: flex;
-      gap: 14px;
-      flex-wrap: wrap;
-    }
-    .product-group label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      cursor: pointer;
-      font-family: Arial, sans-serif;
-      color: #333;
-    }
-    .product-group input[type=radio] {
-      width: auto;
-      accent-color: #2B4899;
-    }
+    .product-group { display: flex; gap: 14px; flex-wrap: wrap; }
+    .product-group label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; font-family: Arial, sans-serif; color: #333; }
+    .product-group input[type=radio] { width: auto; accent-color: #2B4899; }
 
-    /* ── COMMISSION FIELDS NOTE ── */
-    .field-note {
-      font-size: 11px;
-      color: #888;
-      font-family: Arial, sans-serif;
-      font-style: italic;
-      margin-top: 2px;
-    }
+    .supp-premium-row { display: none; margin-bottom: 12px; }
+    .supp-premium-row.show { display: block; }
 
-    /* ── BUTTONS ── */
-    .btn-row {
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-      margin-top: 28px;
-      padding-top: 18px;
-      border-top: 1px solid #c5dfa8;
-      align-items: center;
-    }
-    .bottom-status {
-      flex: 1;
-      font-size: 13px;
-      font-family: Arial, sans-serif;
-      font-weight: bold;
-      color: #4a9e2a;
-      transition: opacity 0.4s;
-    }
-    .btn {
-      font-size: 14px;
-      font-weight: bold;
-      padding: 10px 28px;
-      border-radius: 7px;
-      cursor: pointer;
-      font-family: Arial, sans-serif;
-      border: 2px solid transparent;
-      transition: background 0.18s, color 0.18s, border-color 0.18s;
-    }
-    .btn-save {
-      background: #2B4899;
-      color: #fff;
-      border-color: #2B4899;
-    }
-    .btn-save:hover {
-      background: #1e3570;
-      border-color: #1e3570;
-    }
-    .btn-exit {
-      background: #fff;
-      color: #666;
-      border-color: #b8d99a;
-    }
-    .btn-exit:hover {
-      background: #fee2e2;
-      color: #b91c1c;
-      border-color: #fca5a5;
-    }
-    .btn-copy {
-      display: none;
-      background: #6DB33F;
-      color: #fff;
-      border-color: #6DB33F;
-      font-size: 13px;
-      padding: 9px 20px;
-    }
-    .btn-copy:hover {
-      background: #559030;
-      border-color: #559030;
-    }
+    .field-note { font-size: 11px; color: #888; font-family: Arial, sans-serif; font-style: italic; margin-top: 2px; }
+
+    .btn-row { display: flex; justify-content: flex-end; gap: 12px; margin-top: 28px; padding-top: 18px; border-top: 1px solid #c5dfa8; align-items: center; }
+    .bottom-status { flex: 1; font-size: 13px; font-family: Arial, sans-serif; font-weight: bold; color: #4a9e2a; transition: opacity 0.4s; }
+    .btn { font-size: 14px; font-weight: bold; padding: 10px 28px; border-radius: 7px; cursor: pointer; font-family: Arial, sans-serif; border: 2px solid transparent; transition: background 0.18s, color 0.18s, border-color 0.18s; }
+    .btn-save { background: #2B4899; color: #fff; border-color: #2B4899; }
+    .btn-save:hover { background: #1e3570; border-color: #1e3570; }
+    .btn-exit { background: #fff; color: #666; border-color: #b8d99a; }
+    .btn-exit:hover { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+    .btn-copy { display: none; background: #6DB33F; color: #fff; border-color: #6DB33F; font-size: 13px; padding: 9px 20px; }
+    .btn-copy:hover { background: #559030; border-color: #559030; }
     .btn-copy.visible { display: inline-block; }
 
-    /* ── RESPONSIVE ── */
-    @media (max-width: 600px) {
-      .row-2, .row-3, .row-4, .row-id { grid-template-columns: 1fr; }
-      .product-group { flex-direction: column; gap: 8px; }
-    }
+    @media (max-width: 900px) { .page-layout { flex-direction: column; } .side-panel { width: 100%; } }
+    @media (max-width: 600px) { .row-2, .row-3, .row-id { grid-template-columns: 1fr; } .product-group { flex-direction: column; gap: 8px; } }
   </style>
 </head>
 <body>
-<div class="wrap">
+<div class="page-layout">
 
-  <!-- HEADER -->
-  <div class="header">
-    <img src="logo.png" alt="Bluegrass Medicare Logo" />
-    <div class="header-text">
-      <div class="header-title">New Policy Transaction</div>
-      <div class="header-status" id="headerStatus">Ready for new entry</div>
+  <!-- ── MAIN FORM ── -->
+  <div class="wrap">
+    <div class="header">
+      <img src="logo.png" alt="Bluegrass Medicare Logo" />
+      <div class="header-text">
+        <div class="header-title">New Policy Transaction</div>
+        <div class="header-status" id="headerStatus">Ready for new entry</div>
+      </div>
+    </div>
+
+    <div class="body">
+
+      <!-- CLIENT LOOKUP -->
+      <div class="section">
+        <div class="section-label">Client Identification</div>
+        <div class="row row-id">
+          <div class="field">
+            <label for="clientId">Client ID or Last Name</label>
+            <div class="lookup-wrap">
+              <input type="text" id="clientId" placeholder="Type ID or last name…" autocomplete="off" oninput="handleClientSearch(this.value)" />
+              <div class="lookup-results" id="lookupResults"></div>
+            </div>
+          </div>
+          <div class="field" style="padding-top:4px;">
+            <label>&nbsp;</label>
+            <div style="font-size:12px;color:#888;font-family:Arial,sans-serif;padding:8px 0;">Name auto-fills from Client file</div>
+          </div>
+        </div>
+        <div class="row row-3">
+          <div class="field"><label for="firstName">First Name</label><input type="text" id="firstName" class="readonly-field" readonly placeholder="Auto-filled" /></div>
+          <div class="field"><label for="mi">MI</label><input type="text" id="mi" class="readonly-field" readonly placeholder="" maxlength="1" /></div>
+          <div class="field"><label for="lastName">Last Name</label><input type="text" id="lastName" class="readonly-field" readonly placeholder="Auto-filled" /></div>
+        </div>
+        <div class="row" style="grid-template-columns: 3fr 2fr 0.6fr 1fr;">
+          <div class="field"><label for="cfAddress">Address</label><input type="text" id="cfAddress" class="readonly-field" readonly placeholder="Auto-filled" /></div>
+          <div class="field"><label for="cfCity">City</label><input type="text" id="cfCity" class="readonly-field" readonly placeholder="Auto-filled" /></div>
+          <div class="field"><label for="cfState">State</label><input type="text" id="cfState" class="readonly-field" readonly placeholder="" /></div>
+          <div class="field"><label for="cfZip">Zip</label><input type="text" id="cfZip" class="readonly-field" readonly placeholder="Auto-filled" /></div>
+        </div>
+      </div>
+
+      <!-- POLICY INFO -->
+      <div class="section">
+        <div class="section-label">Policy Information</div>
+        <div class="row row-2">
+          <div class="field">
+            <label for="policyStatus">Policy Status</label>
+            <select id="policyStatus"><option value="Active" selected>Active</option><option value="Inactive">Inactive</option></select>
+          </div>
+          <div class="field">
+            <label for="broker">Broker</label>
+            <select id="broker"><option value="">— Select —</option><option value="Tom">Tom</option><option value="Alex">Alex</option></select>
+          </div>
+        </div>
+        <div class="row row-2">
+          <div class="field"><label for="dateWritten">Date Written</label><input type="date" id="dateWritten" onchange="recalc()" /></div>
+          <div class="field"><label for="effectiveDate">Effective Date</label><input type="date" id="effectiveDate" onchange="recalc()" /></div>
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label>Election Period</label>
+          <div class="radio-group">
+            <label><input type="radio" name="electionPeriod" value="AEP"   onchange="onElectionPeriodChange()" /> AEP</label>
+            <label><input type="radio" name="electionPeriod" value="OEP"   onchange="onElectionPeriodChange()" /> OEP</label>
+            <label><input type="radio" name="electionPeriod" value="SEP"   onchange="onElectionPeriodChange()" /> SEP</label>
+            <label><input type="radio" name="electionPeriod" value="ICEP"  onchange="onElectionPeriodChange()" /> ICEP</label>
+            <label><input type="radio" name="electionPeriod" value="IEP"   onchange="onElectionPeriodChange()" /> IEP</label>
+            <label><input type="radio" name="electionPeriod" value="Other" onchange="onElectionPeriodChange()" /> Other</label>
+          </div>
+        </div>
+        <div class="row row-1">
+          <div class="field">
+            <label for="company">Company</label>
+            <select id="company" onchange="recalc()">
+              <option value="">— Select Company —</option>
+              <option value="Humana">Humana</option>
+              <option value="Anthem">Anthem</option>
+              <option value="Aetna">Aetna</option>
+              <option value="Cigna">Cigna</option>
+              <option value="UHC">UHC</option>
+              <option value="Wellcare">Wellcare</option>
+              <option value="DeltaDental">DeltaDental</option>
+              <option value="GTL">GTL</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label>Product Type</label>
+          <div class="product-group">
+            <label><input type="radio" name="productType" value="MAPD"             onchange="onProductTypeChange()" /> MAPD</label>
+            <label><input type="radio" name="productType" value="PDP"              onchange="onProductTypeChange()" /> PDP</label>
+            <label><input type="radio" name="productType" value="Supplement"       onchange="onProductTypeChange()" /> Supplement</label>
+            <label><input type="radio" name="productType" value="Dental"           onchange="onProductTypeChange()" /> Dental</label>
+            <label><input type="radio" name="productType" value="HospitalIndemnity" onchange="onProductTypeChange()" /> Hospital Indemnity</label>
+          </div>
+        </div>
+        <!-- Monthly premium — Supplement only -->
+        <div class="supp-premium-row" id="suppPremiumRow">
+          <div class="field" style="max-width:220px;">
+            <label for="monthlyPremium">Monthly Premium</label>
+            <input type="text" id="monthlyPremium" placeholder="$0.00" oninput="onPremiumInput(this)" />
+          </div>
+        </div>
+      </div>
+
+      <!-- CLIENT STATUS -->
+      <div class="section">
+        <div class="section-label">Client Status</div>
+        <div class="row row-2" style="align-items:start;">
+          <div class="field">
+            <label>New to Medicare?</label>
+            <div class="yn-group">
+              <button type="button" class="yn-btn" id="newMedicareY" onclick="setYN('newMedicare','Y')">Yes</button>
+              <button type="button" class="yn-btn" id="newMedicareN" onclick="setYN('newMedicare','N')">No</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>New Client?</label>
+            <div class="yn-group">
+              <button type="button" class="yn-btn" id="newClientY" onclick="setYN('newClient','Y')">Yes</button>
+              <button type="button" class="yn-btn" id="newClientN" onclick="setYN('newClient','N')">No</button>
+            </div>
+          </div>
+        </div>
+        <div id="existingClientRow" style="display:none; margin-top:10px;">
+          <div class="field">
+            <label>Existing Client?</label>
+            <div class="yn-group">
+              <button type="button" class="yn-btn" id="existingClientY" onclick="setYN('existingClient','Y')">Yes</button>
+              <button type="button" class="yn-btn" id="existingClientN" onclick="setYN('existingClient','N')">No</button>
+            </div>
+          </div>
+          <div class="existing-flag" id="existingFlag">
+            ⚠️ <strong>Action Required:</strong> Find the client's previous policy record and change its status to <strong>'X'</strong> before saving this transaction.
+            <br/><span style="font-size:11px;color:#9a7500;">(Policy lookup will be available in a future update.)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- COMMISSION & COMPENSATION -->
+      <div class="section">
+        <div class="section-label">Commission &amp; Compensation</div>
+        <div class="row row-2">
+          <div class="field">
+            <label for="origCommission">Originating Commission</label>
+            <input type="text" id="origCommission" placeholder="$0.00"
+              oninput="onOrigCommissionInput(this)"
+              onfocus="this.value=this.value.replace(/[$,]/g,'')"
+              onblur="formatCommissionBlur(this)" />
+            <div class="field-note" id="origCommissionNote">Auto-calculated — or enter manually to override</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BUTTONS -->
+      <div class="btn-row">
+        <button class="btn btn-copy" id="btnCopy" onclick="copyRecord()">Copy This Record</button>
+        <div class="bottom-status" id="bottomStatus"></div>
+        <button class="btn btn-exit" onclick="exitNoChange()">Exit — No Change</button>
+        <button class="btn btn-save" onclick="saveRecord()">Save Transaction</button>
+      </div>
     </div>
   </div>
 
-  <!-- BODY -->
-  <div class="body">
+  <!-- ── SIDE PANEL ── -->
+  <div class="side-panel" id="sidePanel">
+    <div class="sp-header">📋 Transaction Preview</div>
+    <div class="sp-body" id="sidePanelBody"></div>
+  </div>
 
-    <!-- CLIENT LOOKUP -->
-    <div class="section">
-      <div class="section-label">Client Identification</div>
-
-      <div class="row row-id">
-        <div class="field">
-          <label for="clientId">Client ID <span style="color:#888;font-size:11px;">(type to search)</span></label>
-          <div class="lookup-wrap">
-            <input type="text" id="clientId" placeholder="Enter ID or search by name…" autocomplete="off" oninput="handleClientSearch(this.value)" />
-            <div class="lookup-results" id="lookupResults"></div>
-          </div>
-        </div>
-        <div class="field" style="padding-top:4px;">
-          <label>&nbsp;</label>
-          <div style="font-size:12px;color:#888;font-family:Arial,sans-serif;padding:8px 0;">
-            Name auto-fills from Client file
-          </div>
-        </div>
-      </div>
-
-      <div class="row row-3">
-        <div class="field">
-          <label for="firstName">First Name</label>
-          <input type="text" id="firstName" class="readonly-field" readonly placeholder="Auto-filled" />
-        </div>
-        <div class="field">
-          <label for="mi">MI</label>
-          <input type="text" id="mi" class="readonly-field" readonly placeholder="" maxlength="1" />
-        </div>
-        <div class="field">
-          <label for="lastName">Last Name</label>
-          <input type="text" id="lastName" class="readonly-field" readonly placeholder="Auto-filled" />
-        </div>
-      </div>
-    </div>
-
-    <!-- POLICY INFO -->
-    <div class="section">
-      <div class="section-label">Policy Information</div>
-
-      <div class="row row-2">
-        <div class="field">
-          <label for="policyStatus">Policy Status</label>
-          <select id="policyStatus">
-            <option value="Active" selected>Active</option>
-            <option value="Inactive">Inactive</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="broker">Broker</label>
-          <select id="broker">
-            <option value="">— Select —</option>
-            <option value="Tom">Tom</option>
-            <option value="Alex">Alex</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="row row-2">
-        <div class="field">
-          <label for="dateWritten">Date Written</label>
-          <input type="date" id="dateWritten" />
-        </div>
-        <div class="field">
-          <label for="effectiveDate">Effective Date</label>
-          <input type="date" id="effectiveDate" />
-        </div>
-      </div>
-
-      <div class="field" style="margin-bottom:12px;">
-        <label>Election Period</label>
-        <div class="radio-group">
-          <label><input type="radio" name="electionPeriod" value="AEP" /> AEP</label>
-          <label><input type="radio" name="electionPeriod" value="OEP" /> OEP</label>
-          <label><input type="radio" name="electionPeriod" value="SEP" /> SEP</label>
-          <label><input type="radio" name="electionPeriod" value="ICEP" /> ICEP</label>
-          <label><input type="radio" name="electionPeriod" value="IEP" /> IEP</label>
-        </div>
-      </div>
-
-      <div class="row row-1">
-        <div class="field">
-          <label for="company">Company</label>
-          <select id="company">
-            <option value="">— Select Company —</option>
-            <option value="Humana">Humana</option>
-            <option value="Anthem">Anthem</option>
-            <option value="Aetna">Aetna</option>
-            <option value="Cigna">Cigna</option>
-            <option value="UHC">UHC</option>
-            <option value="Wellcare">Wellcare</option>
-            <option value="DeltaDental">DeltaDental</option>
-            <option value="GTL">GTL</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="field" style="margin-bottom:12px;">
-        <label>Product Type</label>
-        <div class="product-group">
-          <label><input type="radio" name="productType" value="MAPD" /> MAPD</label>
-          <label><input type="radio" name="productType" value="PDP" /> PDP</label>
-          <label><input type="radio" name="productType" value="Supplement" /> Supplement</label>
-          <label><input type="radio" name="productType" value="Dental" /> Dental</label>
-          <label><input type="radio" name="productType" value="HospitalIndemnity" /> Hospital Indemnity</label>
-        </div>
-      </div>
-    </div>
-
-    <!-- CLIENT STATUS -->
-    <div class="section">
-      <div class="section-label">Client Status</div>
-
-      <div class="row row-2" style="align-items:start;">
-        <div class="field">
-          <label>New to Medicare?</label>
-          <div class="yn-group">
-            <button type="button" class="yn-btn" id="newMedicareY" onclick="setYN('newMedicare','Y')">Yes</button>
-            <button type="button" class="yn-btn" id="newMedicareN" onclick="setYN('newMedicare','N')">No</button>
-          </div>
-        </div>
-        <div class="field">
-          <label>New Client?</label>
-          <div class="yn-group">
-            <button type="button" class="yn-btn" id="newClientY" onclick="setYN('newClient','Y')">Yes</button>
-            <button type="button" class="yn-btn" id="newClientN" onclick="setYN('newClient','N')">No</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Existing Client — only shows when New Client = No -->
-      <div id="existingClientRow" style="display:none; margin-top:10px;">
-        <div class="field">
-          <label>Existing Client?</label>
-          <div class="yn-group">
-            <button type="button" class="yn-btn" id="existingClientY" onclick="setYN('existingClient','Y')">Yes</button>
-            <button type="button" class="yn-btn" id="existingClientN" onclick="setYN('existingClient','N')">No</button>
-          </div>
-        </div>
-        <div class="existing-flag" id="existingFlag">
-          ⚠️ <strong>Action Required:</strong> Find the client's previous policy record and change its status to <strong>'X'</strong> before saving this transaction.
-          <br/><span style="font-size:11px;color:#9a7500;">(Policy lookup will be available in a future update.)</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- COMMISSION -->
-    <div class="section">
-      <div class="section-label">Commission &amp; Compensation</div>
-
-      <div class="row row-2">
-        <div class="field">
-          <label for="expectedCommission">Expected Commission</label>
-          <input type="text" id="expectedCommission" placeholder="$0.00" oninput="formatCurrency(this)" />
-          <div class="field-note">Auto-calculate from Admin table — coming soon</div>
-        </div>
-        <div class="field">
-          <label for="bonusCommission">Bonus Commission</label>
-          <input type="text" id="bonusCommission" placeholder="$0.00" oninput="formatCurrency(this)" />
-          <div class="field-note">From Admin table — coming soon</div>
-        </div>
-      </div>
-
-      <div class="row row-2">
-        <div class="field">
-          <label for="overrideAmount">Override Amount</label>
-          <input type="text" id="overrideAmount" placeholder="$0.00" oninput="formatCurrency(this)" />
-          <div class="field-note">From Admin table — coming soon</div>
-        </div>
-        <div class="field">
-          <label for="brokerBonus">Broker Bonus (Per Policy)</label>
-          <input type="text" id="brokerBonus" placeholder="$0.00" oninput="formatCurrency(this)" />
-          <div class="field-note">From Broker table — coming soon</div>
-        </div>
-      </div>
-
-      <div class="row row-2">
-        <div class="field">
-          <label for="recurringCommission">Recurring Commission</label>
-          <input type="text" id="recurringCommission" placeholder="$0.00" oninput="formatCurrency(this)" />
-          <div class="field-note">Calculate from table — coming soon</div>
-        </div>
-        <div class="field">
-          <label for="recurringStartDate">Beginning Date of Recurring Commission</label>
-          <input type="date" id="recurringStartDate" />
-          <div class="field-note">Default date calculation — coming soon</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- BUTTONS -->
-    <div class="btn-row">
-      <button class="btn btn-copy" id="btnCopy" onclick="copyRecord()">Copy This Record</button>
-      <div class="bottom-status" id="bottomStatus"></div>
-      <button class="btn btn-exit" onclick="exitNoChange()">Exit — No Change</button>
-      <button class="btn btn-save" onclick="saveRecord()">Save Transaction</button>
-    </div>
-
-  </div><!-- /body -->
-</div><!-- /wrap -->
+</div>
 
 <script>
-  // ── MOCK CLIENT DATA (replace with Supabase lookup later) ──
-  const mockClients = [
-    { id: '100001', firstName: 'James',   mi: 'A', lastName: 'Smith' },
-    { id: '100002', firstName: 'Mary',    mi: 'L', lastName: 'Johnson' },
-    { id: '100003', firstName: 'Robert',  mi: 'T', lastName: 'Smith' },
-    { id: '100004', firstName: 'Patricia',mi: '',  lastName: 'Williams' },
-    { id: '100005', firstName: 'Linda',   mi: 'K', lastName: 'Brown' },
-  ];
+  // ── SUPABASE ─────────────────────────────────────────────────────
+  const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
+  const HEADERS = { 'Content-Type':'application/json', 'apikey':SUPABASE_KEY, 'Authorization':'Bearer '+SUPABASE_KEY, 'Prefer':'return=representation' };
 
-  // ── DEFAULT DATE WRITTEN TO TODAY ──
+  // ── COMMISSION TABLE ──────────────────────────────────────────────
+  // monthlyOverride = the override column next to monthlyRenewal
+  const COMM_TABLE = {
+    2026: {
+      mapd: {
+        Humana:   { renewal:347, monthlyRenewal:28.91, monthlyOverride:5 },
+        Anthem:   { renewal:347, monthlyRenewal:28.91, monthlyOverride:5 },
+        UHC:      { renewal:347, monthlyRenewal:28.91, monthlyOverride:5 },
+        Wellcare: { renewal:347, monthlyRenewal:28.91, monthlyOverride:5 },
+        Aetna:    { renewal:347, monthlyRenewal:28.91, monthlyOverride:5 },
+        Cigna:    { renewal:0,   monthlyRenewal:0,     monthlyOverride:0 },
+      },
+      supp: { Humana:0.22, Anthem:0.22, Aetna:0.18, UHC:0.13, Cigna:0 }
+    },
+    2025: {
+      mapd: {
+        Humana:   { renewal:313, monthlyRenewal:26, monthlyOverride:5 },
+        Anthem:   { renewal:313, monthlyRenewal:26, monthlyOverride:5 },
+        UHC:      { renewal:313, monthlyRenewal:26, monthlyOverride:5 },
+        Wellcare: { renewal:313, monthlyRenewal:26, monthlyOverride:5 },
+        Aetna:    { renewal:313, monthlyRenewal:26, monthlyOverride:5 },
+        Cigna:    { renewal:0,   monthlyRenewal:0,  monthlyOverride:0 },
+      },
+      supp: { Humana:0.22, Anthem:0.22, Aetna:0.18, UHC:0.13, Cigna:0 }
+    },
+    2024: {
+      mapd: {
+        Humana:   { renewal:306, monthlyRenewal:25.5, monthlyOverride:3 },
+        Anthem:   { renewal:306, monthlyRenewal:25.5, monthlyOverride:3 },
+        UHC:      { renewal:306, monthlyRenewal:25.5, monthlyOverride:3 },
+        Wellcare: { renewal:306, monthlyRenewal:25.5, monthlyOverride:3 },
+        Aetna:    { renewal:306, monthlyRenewal:25.5, monthlyOverride:3 },
+        Cigna:    { renewal:0,   monthlyRenewal:0,    monthlyOverride:0 },
+      },
+      supp: { Humana:0.22, Anthem:0.22, Aetna:0.18, UHC:0.13, Cigna:0, Medico:0 }
+    },
+    2023: {
+      mapd: {
+        Humana:   { renewal:301, monthlyRenewal:25.08, monthlyOverride:0 },
+        Anthem:   { renewal:301, monthlyRenewal:25.08, monthlyOverride:0 },
+        UHC:      { renewal:301, monthlyRenewal:25.08, monthlyOverride:0 },
+        Wellcare: { renewal:301, monthlyRenewal:25.08, monthlyOverride:0 },
+        Aetna:    { renewal:301, monthlyRenewal:25.08, monthlyOverride:0 },
+        Cigna:    { renewal:0,   monthlyRenewal:0,     monthlyOverride:0 },
+      },
+      supp: { Humana:0.22, Anthem:0.22, Aetna:0.18, UHC:0.13, Cigna:0, Medico:0 }
+    }
+  };
+
+  // ── STATE ─────────────────────────────────────────────────────────
+  let selectedClientId = null;
+  let searchTimer = null;
+  const ynState = {};
+  let origCommissionManual = false; // true when user typed a manual override
+
+  // ── INIT ──────────────────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('dateWritten').value = today;
+    const nd = new Date(); nd.setMonth(nd.getMonth()+1); nd.setDate(1);
+    document.getElementById('effectiveDate').value = nd.toISOString().split('T')[0];
     showStatus('Ready for new entry', false, true);
+
+    const params = new URLSearchParams(window.location.search);
+    const preloadId = params.get('client_id');
+    if (preloadId) { document.getElementById('clientId').value = preloadId; loadClientById(preloadId); }
   });
 
-  // ── CLIENT SEARCH / LOOKUP ──
-  function handleClientSearch(val) {
-    val = val.trim();
-    const resultsEl = document.getElementById('lookupResults');
+  // ── ELECTION PERIOD ───────────────────────────────────────────────
+  function onElectionPeriodChange() {
+    const ep = document.querySelector('input[name="electionPeriod"]:checked');
+    if (!ep) return;
+    const isAEPorOEP = (ep.value === 'AEP' || ep.value === 'OEP');
+    const isOther    = ep.value === 'Other';
 
-    // Clear name fields if emptied
-    if (!val) {
-      clearNameFields();
-      resultsEl.classList.remove('open');
-      return;
+    // Disable New to Medicare for AEP / OEP / Other
+    document.getElementById('newMedicareY').classList.toggle('disabled', isAEPorOEP || isOther);
+    if ((isAEPorOEP || isOther) && ynState['newMedicare'] !== 'N') setYN('newMedicare','N');
+
+    // AEP: force effective date to Jan 1 of next written year
+    if (ep.value === 'AEP') {
+      const written = document.getElementById('dateWritten').value;
+      const yr = written ? new Date(written+'T00:00:00').getFullYear()+1 : new Date().getFullYear()+1;
+      document.getElementById('effectiveDate').value = `${yr}-01-01`;
     }
 
-    const lower = val.toLowerCase();
-    const matches = mockClients.filter(c =>
-      c.id.includes(val) ||
-      c.firstName.toLowerCase().includes(lower) ||
-      c.lastName.toLowerCase().includes(lower)
-    );
-
-    if (matches.length === 0) {
-      resultsEl.innerHTML = '<div class="lookup-item" style="color:#999;">No clients found</div>';
-      resultsEl.classList.add('open');
-      clearNameFields();
-      return;
+    // Other: clear the originating commission field for manual entry
+    if (isOther) {
+      document.getElementById('origCommission').value = '';
+      document.getElementById('origCommission').classList.add('manual-entry');
+      document.getElementById('origCommissionNote').textContent = 'Non-Medicare product — enter commission manually';
+      origCommissionManual = true;
+    } else {
+      document.getElementById('origCommission').classList.remove('manual-entry');
+      document.getElementById('origCommissionNote').textContent = 'Auto-calculated — or enter manually to override';
+      origCommissionManual = false;
     }
 
-    resultsEl.innerHTML = matches.map(c =>
-      `<div class="lookup-item" onclick="selectClient('${c.id}')">
-        <strong>${c.id}</strong> — ${c.firstName} ${c.mi ? c.mi + '.' : ''} ${c.lastName}
-      </div>`
-    ).join('');
-    resultsEl.classList.add('open');
+    recalc();
   }
 
-  function selectClient(id) {
-    const c = mockClients.find(x => x.id === id);
-    if (!c) return;
-    document.getElementById('clientId').value = c.id;
-    document.getElementById('firstName').value = c.firstName;
-    document.getElementById('mi').value = c.mi;
-    document.getElementById('lastName').value = c.lastName;
+  // ── PRODUCT TYPE ──────────────────────────────────────────────────
+  function onProductTypeChange() {
+    const pt = document.querySelector('input[name="productType"]:checked');
+    document.getElementById('suppPremiumRow').classList.toggle('show', pt && pt.value === 'Supplement');
+    if (!pt || pt.value !== 'Supplement') document.getElementById('monthlyPremium').value = '';
+    recalc();
+  }
 
-    ['firstName','mi','lastName'].forEach(f => {
-      const el = document.getElementById(f);
-      el.classList.remove('readonly-field');
-      el.classList.add('autofilled');
+  function onPremiumInput(input) {
+    let raw = input.value.replace(/[^0-9.]/g,'');
+    const parts = raw.split('.'); if (parts.length > 2) raw = parts[0]+'.'+parts.slice(1).join('');
+    input.value = raw; recalc();
+  }
+
+  // ── ORIGINATING COMMISSION FIELD ──────────────────────────────────
+  function onOrigCommissionInput(input) {
+    let raw = input.value.replace(/[^0-9.]/g,'');
+    const parts = raw.split('.'); if (parts.length > 2) raw = parts[0]+'.'+parts.slice(1).join('');
+    input.value = raw;
+    origCommissionManual = true;
+    renderSidePanel(calcCommissions()); // update panel with manual value shown
+  }
+
+  function formatCommissionBlur(input) {
+    const num = parseFloat(input.value.replace(/[^0-9.]/g,''));
+    if (!isNaN(num)) input.value = '$'+num.toFixed(2);
+  }
+
+  function getOrigCommissionValue() {
+    // Returns the numeric value from the originating commission field (manual or auto)
+    const raw = document.getElementById('origCommission').value.replace(/[$,]/g,'');
+    const num = parseFloat(raw);
+    return isNaN(num) ? null : num;
+  }
+
+  // ── PRORATED MONTHS ───────────────────────────────────────────────
+  function proratedMonths(effDateStr) {
+    if (!effDateStr) return null;
+    const d = new Date(effDateStr+'T00:00:00');
+    return 12 - (d.getMonth()+1) + 1;
+  }
+
+  // ── COMMISSION CALCULATION ────────────────────────────────────────
+  function calcCommissions() {
+    const ep      = document.querySelector('input[name="electionPeriod"]:checked');
+    const pt      = document.querySelector('input[name="productType"]:checked');
+    const company = document.getElementById('company').value;
+    const effDate = document.getElementById('effectiveDate').value;
+    const written = document.getElementById('dateWritten').value;
+
+    if (!ep || !pt || !company || !effDate) return null;
+
+    const epVal       = ep.value;
+    const ptVal       = pt.value;
+    const effYear     = new Date(effDate+'T00:00:00').getFullYear();
+    const writtenYear = written ? new Date(written+'T00:00:00').getFullYear() : effYear;
+    const isNewMed    = ynState['newMedicare'] === 'Y';
+
+    // ── OTHER (non-Medicare) ──────────────────────────────────────
+    if (epVal === 'Other') {
+      const manualAmt = getOrigCommissionValue();
+      return {
+        type: 'other', company, effDate, ptVal,
+        origCommission: manualAmt,
+        records: manualAmt !== null
+          ? [{ label:'Originating Commission', type:'originating', date:effDate, amount:manualAmt, note:'Manual entry' }]
+          : []
+      };
+    }
+
+    // ── SUPPLEMENT ────────────────────────────────────────────────
+    if (ptVal === 'Supplement') {
+      const raw     = document.getElementById('monthlyPremium').value.replace(/[$,]/g,'');
+      const monthly = parseFloat(raw);
+      if (isNaN(monthly) || monthly <= 0) return { type:'supplement', error:'Enter monthly premium to calculate.' };
+      const yearData = COMM_TABLE[effYear] || COMM_TABLE[Math.max(...Object.keys(COMM_TABLE).map(Number))];
+      const rate     = yearData?.supp?.[company];
+      if (rate === undefined || rate === null) return { type:'supplement', error:`No supplement rate for ${company} in ${effYear}.` };
+      const annualPremium  = monthly * 12;
+      const origCommission = annualPremium * rate;
+      return {
+        type:'supplement', company, effDate, effYear,
+        monthlyPremium:monthly, annualPremium, rate, origCommission,
+        records:[{ label:'Originating Commission', type:'originating', date:effDate, amount:origCommission, note:'Single payment' }]
+      };
+    }
+
+    // ── MAPD ──────────────────────────────────────────────────────
+    if (ptVal !== 'MAPD') return null;
+
+    const yearData = COMM_TABLE[effYear];
+    if (!yearData) return { type:'mapd', error:`No commission table for year ${effYear}.` };
+    const carrierData = yearData.mapd[company];
+    if (!carrierData) return { type:'mapd', error:`No MAPD data for ${company} in ${effYear}.` };
+
+    const { renewal, monthlyRenewal, monthlyOverride } = carrierData;
+    const prorated = proratedMonths(effDate);
+
+    let origCommission, origNote, renewalStartYear;
+
+    if (epVal === 'AEP') {
+      origCommission   = renewal;
+      origNote         = `AEP — full renewal $${renewal.toFixed(2)}, paid Jan ${effYear}`;
+      renewalStartYear = writtenYear + 2;
+    } else if (epVal === 'OEP' || !isNewMed) {
+      origCommission   = monthlyRenewal * prorated;
+      origNote         = `$${monthlyRenewal.toFixed(2)} × ${prorated} months`;
+      renewalStartYear = writtenYear + 1;
+    } else {
+      // New to Medicare
+      const proratedComm = monthlyRenewal * prorated;
+      origCommission     = renewal + proratedComm;
+      origNote           = `$${renewal.toFixed(2)} + ($${monthlyRenewal.toFixed(2)} × ${prorated} mo)`;
+      renewalStartYear   = writtenYear + 2;
+    }
+
+    // If user manually overrode, use their value
+    const displayOrig = origCommissionManual && getOrigCommissionValue() !== null
+      ? getOrigCommissionValue()
+      : origCommission;
+
+    // 12 renewal records
+    const renewalRecords = [];
+    for (let m = 1; m <= 12; m++) {
+      const mo = String(m).padStart(2,'0');
+      renewalRecords.push({ label:`Renewal ${renewalStartYear}-${mo}`, type:'renewal', date:`${renewalStartYear}-${mo}-01`, amount:monthlyRenewal, note:'Monthly renewal' });
+    }
+
+    // 12 override records (same year as renewals)
+    const overrideRecords = [];
+    if (monthlyOverride > 0) {
+      for (let m = 1; m <= 12; m++) {
+        const mo = String(m).padStart(2,'0');
+        overrideRecords.push({ label:`Override ${renewalStartYear}-${mo}`, type:'override', date:`${renewalStartYear}-${mo}-01`, amount:monthlyOverride, note:'Monthly override' });
+      }
+    }
+
+    return {
+      type:'mapd', company, effDate, effYear,
+      epVal, isNewMed, prorated,
+      renewal, monthlyRenewal, monthlyOverride,
+      origCommission, displayOrig, origNote, renewalStartYear,
+      records:[
+        { label:'Originating Commission', type:'originating', date:effDate, amount:displayOrig, note:origNote },
+        ...renewalRecords,
+        ...overrideRecords
+      ],
+      renewalRecords, overrideRecords
+    };
+  }
+
+  // ── RECALC ────────────────────────────────────────────────────────
+  function recalc() {
+    const result = calcCommissions();
+
+    // Auto-fill the originating commission field (unless user has manually overridden)
+    if (result && !result.error && !origCommissionManual) {
+      const autoVal = result.type === 'mapd' ? result.origCommission
+                    : result.type === 'supplement' ? result.origCommission
+                    : null;
+      const el = document.getElementById('origCommission');
+      if (autoVal !== null && autoVal !== undefined) {
+        el.value = '$' + autoVal.toFixed(2);
+      } else if (result.type !== 'other') {
+        el.value = '';
+      }
+    }
+
+    renderSidePanel(result);
+  }
+
+  // ── RENDER SIDE PANEL ─────────────────────────────────────────────
+  function renderSidePanel(result) {
+    const panel = document.getElementById('sidePanel');
+    const body  = document.getElementById('sidePanelBody');
+
+    if (!result) { panel.classList.remove('visible'); return; }
+    panel.classList.add('visible');
+
+    if (result.error) {
+      body.innerHTML = `<div class="sp-error">⚠️ ${result.error}</div>`; return;
+    }
+
+    // Client info header
+    const clientName = [
+      document.getElementById('firstName').value,
+      document.getElementById('mi').value ? document.getElementById('mi').value+'.' : '',
+      document.getElementById('lastName').value
+    ].filter(Boolean).join(' ') || '—';
+    const clientId   = document.getElementById('clientId').value || '—';
+    const company    = document.getElementById('company').value || '—';
+    const ep         = document.querySelector('input[name="electionPeriod"]:checked')?.value || '—';
+    const pt         = document.querySelector('input[name="productType"]:checked')?.value || '—';
+    const effDate    = document.getElementById('effectiveDate').value || '—';
+    const broker     = document.getElementById('broker').value || '—';
+
+    let html = `
+      <div class="rec-card" style="background:#2B4899;border-color:#1e3570;margin-bottom:10px;">
+        <div style="color:#fff;font-family:Arial,sans-serif;">
+          <div style="font-size:13px;font-weight:bold;margin-bottom:4px;">${clientName}</div>
+          <div style="font-size:11px;opacity:0.8;">ID: ${clientId} &nbsp;·&nbsp; Broker: ${broker}</div>
+          <div style="font-size:11px;opacity:0.8;margin-top:2px;">${company} &nbsp;·&nbsp; ${pt} &nbsp;·&nbsp; ${ep}</div>
+          <div style="font-size:11px;opacity:0.8;margin-top:2px;">Effective: ${effDate}</div>
+        </div>
+      </div>`;
+
+    // ── OTHER ────────────────────────────────────────────────────
+    if (result.type === 'other') {
+      const amt = result.origCommission !== null ? '$'+result.origCommission.toFixed(2) : 'Enter amount above';
+      html += `
+        <div class="rec-group-label">Originating Commission</div>
+        <div class="rec-card">
+          <div class="rec-card-header">
+            <span class="rec-card-type">Non-Medicare Product</span>
+            <span class="rec-card-amount">${amt}</span>
+          </div>
+          <div class="rec-card-row"><span class="rck">Date</span><span class="rcv">${effDate}</span></div>
+          <div class="rec-card-row"><span class="rck">Type</span><span class="rcv">Manual Entry</span></div>
+        </div>`;
+      body.innerHTML = html; return;
+    }
+
+    // ── SUPPLEMENT ───────────────────────────────────────────────
+    if (result.type === 'supplement') {
+      html += `
+        <div class="rec-group-label">Originating Commission (1 record)</div>
+        <div class="rec-card">
+          <div class="rec-card-header">
+            <span class="rec-card-type">Supplement — ${result.company}</span>
+            <span class="rec-card-amount">$${result.origCommission.toFixed(2)}</span>
+          </div>
+          <div class="rec-card-row"><span class="rck">Date</span><span class="rcv">${result.effDate}</span></div>
+          <div class="rec-card-row"><span class="rck">Monthly Premium</span><span class="rcv">$${result.monthlyPremium.toFixed(2)}</span></div>
+          <div class="rec-card-row"><span class="rck">Annual Premium</span><span class="rcv">$${result.annualPremium.toFixed(2)}</span></div>
+          <div class="rec-card-row"><span class="rck">Rate</span><span class="rcv">${(result.rate*100).toFixed(0)}%</span></div>
+        </div>
+        <div class="rec-summary">
+          <div class="rec-summary-row total"><span>Total Commission</span><span>$${result.origCommission.toFixed(2)}</span></div>
+          <div class="rec-summary-row" style="font-size:11px;opacity:0.7;margin-top:4px;"><span>1 transaction record</span></div>
+        </div>`;
+      body.innerHTML = html; return;
+    }
+
+    // ── MAPD ─────────────────────────────────────────────────────
+    if (result.type === 'mapd') {
+      const renewalTotal   = result.monthlyRenewal * 12;
+      const overrideTotal  = result.monthlyOverride * 12;
+      const grandTotal     = result.displayOrig + renewalTotal + overrideTotal;
+      const totalRecords   = 1 + result.renewalRecords.length + result.overrideRecords.length;
+
+      // Originating
+      html += `
+        <div class="rec-group-label">Originating Commission (1 record)</div>
+        <div class="rec-card">
+          <div class="rec-card-header">
+            <span class="rec-card-type">Originating</span>
+            <span class="rec-card-amount">$${result.displayOrig.toFixed(2)}</span>
+          </div>
+          <div class="rec-card-row"><span class="rck">Date</span><span class="rcv">${result.effDate}</span></div>
+          <div class="rec-card-row"><span class="rck">New to Medicare</span><span class="rcv">${result.isNewMed?'Yes':'No'}</span></div>
+          <div class="rec-card-row"><span class="rck">Prorated Months</span><span class="rcv">${result.prorated}</span></div>
+          <div class="rec-card-row"><span class="rck">Calculation</span><span class="rcv" style="font-size:10px;max-width:140px;text-align:right;line-height:1.4;">${result.origNote}</span></div>
+        </div>`;
+
+      // Renewals
+      html += `<div class="rec-group-label">Monthly Renewals (12 records — Jan–Dec ${result.renewalStartYear})</div>
+        <div class="rec-card">
+          <div class="rec-card-header">
+            <span class="rec-card-type">Renewal × 12</span>
+            <span class="rec-card-amount">$${renewalTotal.toFixed(2)}</span>
+          </div>
+          <div class="renewal-list">`;
+      result.renewalRecords.forEach(r => {
+        html += `<div class="renewal-list-item"><span class="rl-date">${r.date}</span><span class="rl-amt">$${r.amount.toFixed(2)}</span></div>`;
+      });
+      html += `</div></div>`;
+
+      // Overrides
+      if (result.overrideRecords.length > 0) {
+        html += `<div class="rec-group-label">Monthly Overrides (12 records — Jan–Dec ${result.renewalStartYear})</div>
+          <div class="rec-card" style="border-color:#6DB33F;">
+            <div class="rec-card-header">
+              <span class="rec-card-type" style="color:#4a7c1f;">Override × 12</span>
+              <span class="rec-card-amount">$${overrideTotal.toFixed(2)}</span>
+            </div>
+            <div class="renewal-list">`;
+        result.overrideRecords.forEach(r => {
+          html += `<div class="renewal-list-item"><span class="rl-date">${r.date}</span><span class="rl-amt">$${r.amount.toFixed(2)}</span></div>`;
+        });
+        html += `</div></div>`;
+      }
+
+      // Summary
+      html += `
+        <div class="rec-summary">
+          <div class="rec-summary-row"><span>Originating</span><span>$${result.displayOrig.toFixed(2)}</span></div>
+          <div class="rec-summary-row"><span>Renewals (${result.renewalStartYear})</span><span>$${renewalTotal.toFixed(2)}</span></div>`;
+      if (overrideTotal > 0) {
+        html += `<div class="rec-summary-row"><span>Overrides (${result.renewalStartYear})</span><span>$${overrideTotal.toFixed(2)}</span></div>`;
+      }
+      html += `
+          <div class="rec-summary-row total"><span>Total Est. Commission</span><span>$${grandTotal.toFixed(2)}</span></div>
+          <div class="rec-summary-row" style="font-size:11px;opacity:0.7;margin-top:4px;"><span>${totalRecords} transaction records</span></div>
+        </div>`;
+
+      body.innerHTML = html;
+    }
+  }
+
+  // ── CLIENT SEARCH ─────────────────────────────────────────────────
+  function handleClientSearch(val) {
+    val = val.trim();
+    if (!val) { clearNameFields(); document.getElementById('lookupResults').classList.remove('open'); return; }
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => searchClients(val), 300);
+  }
+
+  async function searchClients(val) {
+    const resultsEl = document.getElementById('lookupResults');
+    resultsEl.innerHTML = '<div class="lookup-item searching">Searching…</div>';
+    resultsEl.classList.add('open');
+    const isId = /^\d+$/.test(val);
+    const url  = isId
+      ? `${SUPABASE_URL}/rest/v1/clients?id=eq.${val}&limit=1&select=id,first_name,mi,last_name,address,city,state,zip`
+      : `${SUPABASE_URL}/rest/v1/clients?last_name=ilike.${encodeURIComponent(val+'%')}&limit=10&select=id,first_name,mi,last_name,address,city,state,zip&order=last_name.asc`;
+    try {
+      const res  = await fetch(url, { headers: HEADERS });
+      const rows = await res.json();
+      if (!rows.length) { resultsEl.innerHTML = '<div class="lookup-item no-results">No clients found</div>'; return; }
+      resultsEl.innerHTML = rows.map(c =>
+        `<div class="lookup-item" onclick="selectClient(${c.id},'${escQ(c.first_name)}','${escQ(c.mi||'')}','${escQ(c.last_name)}','${escQ(c.address||'')}','${escQ(c.city||'')}','${escQ(c.state||'')}','${escQ(c.zip||'')}')">
+          <strong>${c.id}</strong> — ${c.first_name} ${c.mi?c.mi+'.':''} ${c.last_name}
+        </div>`
+      ).join('');
+    } catch(e) { resultsEl.innerHTML = '<div class="lookup-item no-results">Search failed — check connection</div>'; }
+  }
+
+  async function loadClientById(id) {
+    try {
+      const res  = await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${id}&limit=1&select=id,first_name,mi,last_name,address,city,state,zip`, { headers: HEADERS });
+      const rows = await res.json();
+      if (rows.length) { const c=rows[0]; selectClient(c.id,c.first_name,c.mi||'',c.last_name,c.address||'',c.city||'',c.state||'',c.zip||''); }
+      else showStatus('Client ID not found.', true);
+    } catch(e) { showStatus('Could not load client — check connection.', true); }
+  }
+
+  function selectClient(id, firstName, mi, lastName, address, city, state, zip) {
+    selectedClientId = id;
+    document.getElementById('clientId').value  = id;
+    document.getElementById('firstName').value = firstName;
+    document.getElementById('mi').value        = mi;
+    document.getElementById('lastName').value  = lastName;
+    document.getElementById('cfAddress').value = address;
+    document.getElementById('cfCity').value    = city;
+    document.getElementById('cfState').value   = state;
+    document.getElementById('cfZip').value     = zip;
+    ['firstName','mi','lastName','cfAddress','cfCity','cfState','cfZip'].forEach(f => {
+      document.getElementById(f).classList.remove('readonly-field');
+      document.getElementById(f).classList.add('autofilled');
     });
-
     document.getElementById('lookupResults').classList.remove('open');
+    showStatus(`Client loaded: ${firstName} ${lastName} (ID: ${id})`, false, true);
+    recalc();
   }
 
   function clearNameFields() {
-    ['firstName','mi','lastName'].forEach(f => {
+    selectedClientId = null;
+    ['firstName','mi','lastName','cfAddress','cfCity','cfState','cfZip'].forEach(f => {
       const el = document.getElementById(f);
-      el.value = '';
-      el.classList.remove('autofilled');
-      el.classList.add('readonly-field');
+      el.value = ''; el.classList.remove('autofilled'); el.classList.add('readonly-field');
     });
   }
 
-  // Close dropdown when clicking outside
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.lookup-wrap')) {
-      document.getElementById('lookupResults').classList.remove('open');
-    }
-  });
+  function escQ(s) { return (s||'').replace(/'/g,"\\'"); }
+  document.addEventListener('click', e => { if (!e.target.closest('.lookup-wrap')) document.getElementById('lookupResults').classList.remove('open'); });
 
-  // ── Y/N TOGGLE BUTTONS ──
-  const ynState = {};
-
+  // ── Y/N BUTTONS ───────────────────────────────────────────────────
   function setYN(group, val) {
     ynState[group] = val;
-    const yBtn = document.getElementById(group + 'Y');
-    const nBtn = document.getElementById(group + 'N');
+    const yBtn = document.getElementById(group+'Y');
+    const nBtn = document.getElementById(group+'N');
     yBtn.classList.remove('active-yes','active-no');
     nBtn.classList.remove('active-yes','active-no');
     if (val === 'Y') yBtn.classList.add('active-yes');
     else             nBtn.classList.add('active-no');
-
-    // New Client logic — show/hide Existing Client row
     if (group === 'newClient') {
       const existRow = document.getElementById('existingClientRow');
-      if (val === 'N') {
-        existRow.style.display = 'block';
-      } else {
+      if (val === 'N') { existRow.style.display = 'block'; }
+      else {
         existRow.style.display = 'none';
         ynState['existingClient'] = null;
-        ['existingClientY','existingClientN'].forEach(id => {
-          document.getElementById(id).classList.remove('active-yes','active-no');
-        });
+        ['existingClientY','existingClientN'].forEach(id => document.getElementById(id).classList.remove('active-yes','active-no'));
         document.getElementById('existingFlag').classList.remove('show');
       }
     }
-
-    // Existing Client = Yes → show flag
-    if (group === 'existingClient') {
-      const flag = document.getElementById('existingFlag');
-      if (val === 'Y') flag.classList.add('show');
-      else             flag.classList.remove('show');
-    }
+    if (group === 'existingClient') document.getElementById('existingFlag').classList.toggle('show', val==='Y');
+    if (group === 'newMedicare') { origCommissionManual = false; recalc(); }
   }
 
-  // ── CURRENCY FORMATTING ──
-  function formatCurrency(input) {
-    let raw = input.value.replace(/[^0-9.]/g, '');
-    const parts = raw.split('.');
-    if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('');
-    if (raw === '' || raw === '.') { input.value = raw; return; }
-    const num = parseFloat(raw);
-    if (!isNaN(num)) {
-      // Only reformat on blur, not mid-type
-    }
-    input.value = raw.startsWith('.') ? raw : raw;
-  }
-
-  document.querySelectorAll('[oninput="formatCurrency(this)"]').forEach(el => {
-    el.addEventListener('blur', function() {
-      if (this.value === '' || this.value === '.') return;
-      const num = parseFloat(this.value.replace(/[^0-9.]/g, ''));
-      if (!isNaN(num)) this.value = '$' + num.toFixed(2);
-    });
-    el.addEventListener('focus', function() {
-      this.value = this.value.replace(/[$,]/g, '');
-    });
-  });
-
-  // ── STATUS MESSAGES ──
-  function showStatus(msg, isError = false, persist = false) {
+  // ── STATUS ────────────────────────────────────────────────────────
+  let statusTimer = null;
+  function showStatus(msg, isError=false, persist=false) {
     const top = document.getElementById('headerStatus');
     const bot = document.getElementById('bottomStatus');
-    const color = isError ? '#c0392b' : '#4a9e2a';
-    if (top) {
-      top.textContent = msg;
-      top.className = 'header-status' + (isError ? ' error' : '');
-      void top.offsetWidth;
-      top.classList.add('pulse-msg');
-      top.addEventListener('animationend', () => top.classList.remove('pulse-msg'), { once: true });
-    }
-    if (bot) {
-      bot.textContent = msg;
-      bot.style.color = color;
-      bot.style.opacity = '1';
-    }
-    if (!persist) {
-      setTimeout(() => {
-        if (top) top.classList.add('fade');
-        if (bot) bot.style.opacity = '0';
-      }, 3500);
-    }
+    if (top) { top.textContent=msg; top.className='header-status'+(isError?' error':''); void top.offsetWidth; top.classList.add('pulse-msg'); top.addEventListener('animationend',()=>top.classList.remove('pulse-msg'),{once:true}); }
+    if (bot) { bot.textContent=msg; bot.style.color=isError?'#c0392b':'#4a9e2a'; bot.style.opacity='1'; }
+    if (statusTimer) clearTimeout(statusTimer);
+    if (!persist) statusTimer = setTimeout(()=>{ if(top) top.classList.add('fade'); if(bot) bot.style.opacity='0'; }, 3500);
   }
 
-  // ── SAVE ──
+  // ── SAVE ──────────────────────────────────────────────────────────
   function saveRecord() {
-    // Basic validation
-    if (!document.getElementById('clientId').value.trim()) {
-      showStatus('Please select a client before saving.', true);
-      return;
-    }
-    if (!document.getElementById('broker').value) {
-      showStatus('Please select a broker.', true);
-      return;
-    }
+    if (!selectedClientId) { showStatus('Please select a client before saving.', true); return; }
+    if (!document.getElementById('broker').value) { showStatus('Please select a broker.', true); return; }
     const ep = document.querySelector('input[name="electionPeriod"]:checked');
-    if (!ep) {
-      showStatus('Please select an Election Period.', true);
-      return;
-    }
+    if (!ep) { showStatus('Please select an Election Period.', true); return; }
     const pt = document.querySelector('input[name="productType"]:checked');
-    if (!pt) {
-      showStatus('Please select a Product Type.', true);
-      return;
-    }
+    if (!pt) { showStatus('Please select a Product Type.', true); return; }
 
-    // Collect record (will POST to Supabase later)
+    const result = calcCommissions();
     const record = {
-      clientId:             document.getElementById('clientId').value,
-      firstName:            document.getElementById('firstName').value,
-      mi:                   document.getElementById('mi').value,
-      lastName:             document.getElementById('lastName').value,
-      policyStatus:         document.getElementById('policyStatus').value,
-      broker:               document.getElementById('broker').value,
-      dateWritten:          document.getElementById('dateWritten').value,
-      effectiveDate:        document.getElementById('effectiveDate').value,
-      electionPeriod:       ep.value,
-      company:              document.getElementById('company').value,
-      productType:          pt.value,
-      newToMedicare:        ynState['newMedicare'] || '',
-      newClient:            ynState['newClient'] || '',
-      existingClient:       ynState['existingClient'] || '',
-      expectedCommission:   document.getElementById('expectedCommission').value,
-      bonusCommission:      document.getElementById('bonusCommission').value,
-      overrideAmount:       document.getElementById('overrideAmount').value,
-      brokerBonus:          document.getElementById('brokerBonus').value,
-      recurringCommission:  document.getElementById('recurringCommission').value,
-      recurringStartDate:   document.getElementById('recurringStartDate').value,
+      client_id:       selectedClientId,
+      policy_status:   document.getElementById('policyStatus').value,
+      broker:          document.getElementById('broker').value,
+      date_written:    document.getElementById('dateWritten').value,
+      effective_date:  document.getElementById('effectiveDate').value,
+      election_period: ep.value,
+      company:         document.getElementById('company').value,
+      product_type:    pt.value,
+      new_to_medicare: ynState['newMedicare'] || null,
+      new_client:      ynState['newClient'] || null,
+      existing_client: ynState['existingClient'] || null,
+      orig_commission: getOrigCommissionValue(),
+      commission_records: result && !result.error ? result.records : [],
     };
 
-    console.log('Transaction record:', record);
+    console.log('=== TRANSACTION RECORD ===', record);
+    if (result && !result.error && result.records.length) {
+      console.log(`Commission records (${result.records.length}):`);
+      result.records.forEach((r,i) => console.log(`  [${i+1}] ${r.type.toUpperCase()} | ${r.label} | ${r.date} | $${r.amount.toFixed(2)}`));
+    }
+
     showStatus('Transaction saved successfully!', false, false);
-
-    // Show Copy This Record button
     document.getElementById('btnCopy').classList.add('visible');
-
-    // Reset form after brief delay
-    setTimeout(() => {
-      resetForm();
-    }, 2000);
+    setTimeout(() => resetForm(), 2000);
   }
 
-  // ── RESET FORM ──
+  // ── RESET ─────────────────────────────────────────────────────────
   function resetForm() {
-    // Clear text/date inputs
-    ['clientId','expectedCommission','bonusCommission',
-     'overrideAmount','brokerBonus','recurringCommission','recurringStartDate',
-     'effectiveDate'].forEach(id => {
-      document.getElementById(id).value = '';
-    });
+    document.getElementById('clientId').value = '';
     clearNameFields();
-
-    // Reset date written to today
     document.getElementById('dateWritten').value = new Date().toISOString().split('T')[0];
-
-    // Reset selects
+    const nd = new Date(); nd.setMonth(nd.getMonth()+1); nd.setDate(1);
+    document.getElementById('effectiveDate').value = nd.toISOString().split('T')[0];
     document.getElementById('policyStatus').value = 'Active';
     document.getElementById('broker').value = '';
     document.getElementById('company').value = '';
-
-    // Reset radios
+    document.getElementById('monthlyPremium').value = '';
+    document.getElementById('origCommission').value = '';
+    document.getElementById('origCommission').classList.remove('manual-entry');
+    document.getElementById('origCommissionNote').textContent = 'Auto-calculated — or enter manually to override';
+    document.getElementById('suppPremiumRow').classList.remove('show');
     document.querySelectorAll('input[type=radio]').forEach(r => r.checked = false);
-
-    // Reset Y/N buttons
     Object.keys(ynState).forEach(k => delete ynState[k]);
-    document.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('active-yes','active-no'));
-
-    // Hide existing client row
+    document.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('active-yes','active-no','disabled'));
     document.getElementById('existingClientRow').style.display = 'none';
     document.getElementById('existingFlag').classList.remove('show');
-
-    // Hide copy button
     document.getElementById('btnCopy').classList.remove('visible');
-
+    document.getElementById('sidePanel').classList.remove('visible');
+    origCommissionManual = false;
     showStatus('Ready for new entry', false, true);
   }
 
-  // ── COPY RECORD ──
-  // Keeps all fields populated except Client ID/name — user picks a new client
+  // ── COPY ──────────────────────────────────────────────────────────
   function copyRecord() {
     clearNameFields();
     document.getElementById('clientId').value = '';
-    document.getElementById('lookupResults').classList.remove('open');
-    // Date Written resets to today
+    selectedClientId = null;
     document.getElementById('dateWritten').value = new Date().toISOString().split('T')[0];
     document.getElementById('btnCopy').classList.remove('visible');
+    origCommissionManual = false;
     showStatus('Record copied — select a new client to continue.', false, true);
     document.getElementById('clientId').focus();
   }
 
-  // ── EXIT ──
+  // ── EXIT ──────────────────────────────────────────────────────────
   function exitNoChange() {
     if (confirm('Exit without saving? Any unsaved data will be lost.')) {
       showStatus('Exited without saving.', false, false);
