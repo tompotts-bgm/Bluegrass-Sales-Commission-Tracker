@@ -654,9 +654,60 @@ async function processFile(file) {
   reader.readAsArrayBuffer(file);
 }
 
+const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
+const SB_HEADERS = {
+  'Content-Type':  'application/json',
+  'apikey':        SUPABASE_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_KEY,
+  'Prefer':        'return=minimal'
+};
+
+async function saveToSupabase(dataRows) {
+  const today = new Date().toISOString().split('T')[0];
+  const commissionYear = new Date().getFullYear();
+
+  const records = dataRows.map(r => ({
+    producer_number:     (r['Producer Number']     || '').toString().trim() || null,
+    product_type:        (r['Product Type']         || '').toString().trim() || null,
+    name_group_name:     (r['Name / Group Name']    || '').toString().trim() || null,
+    rate_effective_date: (r['Rate Effective Date']  || '').toString().trim() || null,
+    rate:                parseFloat(r['Rate'])       || null,
+    due_date:            (r['Due Date']             || '').toString().trim() || null,
+    payment_amount:      parseFloat(r['Payment Amount']) || null,
+    source_company:      (r['_source']              || '').toString().trim() || null,
+    commission_matched:  false,
+    commission_year:     commissionYear,
+  }));
+
+  const resp = await fetch(`${SUPABASE_URL}/rest/v1/commissions`, {
+    method: 'POST',
+    headers: SB_HEADERS,
+    body: JSON.stringify(records)
+  });
+
+  if (!resp.ok) {
+    const body = await resp.text();
+    throw new Error(`Supabase error ${resp.status}: ${body}`);
+  }
+}
+
 // ── Export ────────────────────────────────────────────────────
-function exportXlsx() {
+async function exportXlsx() {
+  const btn = document.getElementById('btn-export');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
   const allData = [...masterData, ...cleanData];
+
+  // Save to Supabase
+  try {
+    await saveToSupabase(cleanData);
+  } catch(e) {
+    alert('Supabase save failed: ' + e.message + '\n\nExcel file will still download.');
+  }
+
+  // Download Excel
   const wsData = [
     OUTPUT_COLS.concat(['Source Company']),
     ...allData.map(r => OUTPUT_COLS.map(c => r[c] ?? '').concat([r['_source'] || '']))
@@ -668,7 +719,10 @@ function exportXlsx() {
   XLSX.writeFile(wb, 'commission_merged.xlsx');
   masterData = allData;
   try { localStorage.setItem('commissionMaster', JSON.stringify(masterData)); } catch(e) {}
-  alert('Exported ' + allData.length + ' total rows successfully.');
+
+  btn.disabled = false;
+  btn.textContent = '⬇ Download merged .xlsx';
+  alert('Saved ' + cleanData.length + ' rows to Supabase and exported ' + allData.length + ' total rows to Excel.');
 }
 
 function exportDiscarded() {
