@@ -237,6 +237,7 @@ function detectCompany(headers) {
   const upper = headers.map(h => (h||'').toString().toUpperCase().trim());
   let best = null, bestScore = 0;
   for (const p of PROFILES) {
+    if (!p || !p.detectKeys) continue;
     const score = p.detectKeys.filter(k => upper.includes(k.toUpperCase())).length;
     const pct = score / p.detectKeys.length;
     if (pct > bestScore) { bestScore = pct; best = p; }
