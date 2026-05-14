@@ -206,9 +206,9 @@ const PROFILES = [
       'Producer Number':     { col: 'WA_SAN' },
       'Product Type':        { col: 'INSPRD' },
       'Name / Group Name':   { combine: ['CLTLST','CLTFST'], format: 'LAST, FIRST' },
-      'Rate Effective Date': { col: 'EFFDAT' },
+      'Rate Effective Date': { col: 'EFFDAT', transform: 'humana-date' },
       'Rate':                { col: 'TRNAMT' },
-      'Due Date':            { fallback: ['COTRDT','RUNCODE'] },
+      'Due Date':            { fallback: ['COTRDT','RUNCODE'], transform: 'humana-date' },
       'Payment Amount':      { col: 'TRNAMT' },
     }
   },
@@ -251,7 +251,15 @@ function applyTransform(value, transform) {
   if (!transform) return value;
   const v = (value || '').toString().trim();
 
-  if (transform === 'aetna-name') {
+  if (transform === 'humana-date') {
+    // Truncate full JS date string to just the date portion
+    if (!v) return '';
+    const d = new Date(v);
+    if (!isNaN(d)) {
+      return (d.getUTCMonth()+1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear();
+    }
+    return v;
+  }
     // Format: "AYERS M,SUSAN" → "AYERS, SUSAN"  or "COLLINS,FARON" → "COLLINS, FARON"
     // Strip middle initial if present: split on comma, take last word of left side as last name
     const parts = v.split(',');
@@ -291,7 +299,7 @@ function resolveCell(row, mapDef, headers) {
     return parts.filter(Boolean).join(' ');
   }
   if (mapDef.fallback) {
-    for (const c of mapDef.fallback) { const k = upper[c.toUpperCase()]; if (k !== undefined && row[k]) return row[k]; }
+    for (const c of mapDef.fallback) { const k = upper[c.toUpperCase()]; if (k !== undefined && row[k]) return applyTransform(row[k], mapDef.transform); }
     return '';
   }
   return '';
