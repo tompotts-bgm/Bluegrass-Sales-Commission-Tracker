@@ -469,24 +469,25 @@ async function processFile(file) {
       let headers = Object.keys(rows[0]);
       let detected = detectCompany(headers);
 
-      // If not detected on first row, try scanning for a profile with skipRows
+      // If not detected on first row, scan each row to find the header row
       if (!detected) {
-        for (const p of PROFILES) {
-          if (p.skipRows) {
-            const skippedRows = XLSX.utils.sheet_to_json(ws, { defval: '', range: p.skipRows });
-            if (skippedRows.length) {
-              const skippedHeaders = Object.keys(skippedRows[0]);
-              const upper = skippedHeaders.map(h => (h||'').toString().toUpperCase().trim());
-              const score = p.detectKeys.filter(k => upper.includes(k.toUpperCase())).length;
-              const pct = score / p.detectKeys.length;
-              if (pct >= 0.4) {
-                detected = { profile: p, confidence: pct };
-                rows = skippedRows;
-                headers = skippedHeaders;
-                break;
-              }
+        const rawRows = XLSX.utils.sheet_to_json(ws, { defval: '', header: 1 });
+        for (let r = 1; r < Math.min(rawRows.length, 20); r++) {
+          const candidateHeaders = rawRows[r].map(h => (h||'').toString().trim());
+          if (!candidateHeaders.some(h => h)) continue; // skip empty rows
+          for (const p of PROFILES) {
+            if (!p.skipRows) continue;
+            const upper = candidateHeaders.map(h => h.toUpperCase());
+            const score = p.detectKeys.filter(k => upper.includes(k.toUpperCase())).length;
+            const pct = score / p.detectKeys.length;
+            if (pct >= 0.4) {
+              detected = { profile: p, confidence: pct };
+              rows = XLSX.utils.sheet_to_json(ws, { defval: '', range: r });
+              headers = Object.keys(rows[0] || {});
+              break;
             }
           }
+          if (detected) break;
         }
       }
 
