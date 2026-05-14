@@ -177,6 +177,7 @@ footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; bor
   <p class="sub">Automatically matches unmatched commission payments against recorded transactions. Exact matches save automatically — fuzzy matches are flagged for your review.</p>
 
   <div id="status-bar"></div>
+  <div id="debug-output" style="display:none;background:#f0f0f0;border:1px solid #ccc;border-radius:8px;padding:14px;font-size:13px;margin-bottom:1rem;font-family:monospace;line-height:1.8;white-space:pre-wrap;"></div>
 
   <div class="controls">
     <button class="primary" id="btn-run">▶ Run Auto-Match</button>
@@ -493,7 +494,9 @@ or
       // DEBUG — show normalized names on both sides
       const debugTx = transactions.map(t => normalizeTransactionName(t.first_name, t.last_name));
       const debugComm = commNorm.map(c => c._normName);
-      alert("TRANSACTION names:\n" + debugTx.join("\n") + "\n\nCOMMISSION names:\n" + debugComm.join("\n"));
+      const debugEl = document.getElementById("debug-output");
+      debugEl.style.display = "block";
+      debugEl.innerHTML = "<strong>TRANSACTION names:</strong><br>" + debugTx.join("<br>") + "<br><br><strong>COMMISSION names:</strong><br>" + debugComm.join("<br>") + "<br><br><strong>Transaction count:</strong> " + transactions.length + "<br><strong>Commission count:</strong> " + commissions.length;
       for (const tx of transactions) {
         const txName   = normalizeTransactionName(tx.first_name, tx.last_name);
         const txAmount = parseFloat(tx.orig_commission) || parseFloat(tx.monthly_renewal) || 0;
