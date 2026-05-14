@@ -469,12 +469,24 @@ async function processFile(file) {
 
       let rows = [], headers = [], detected = null;
       let debugLog = 'Scanning rows for headers:\n';
+      let statementDate = null; // extracted from header area (e.g. Aetna Statement Date)
 
-      // Scan first 20 rows looking for a profile match
+      // Scan first 20 rows looking for a profile match AND extract header metadata
       for (let r = 0; r < Math.min(rawRows.length, 20); r++) {
         const candidateHeaders = rawRows[r].map(h => (h||'').toString().trim());
         debugLog += `Row ${r}: ${JSON.stringify(candidateHeaders)}\n`;
         if (!candidateHeaders.some(h => h)) continue;
+
+        // Extract Statement Date if present in this row
+        const rowStr = candidateHeaders.join('|').toUpperCase();
+        if (rowStr.includes('STATEMENT DATE')) {
+          // Value is the next non-empty cell
+          const dateVal = candidateHeaders.find((v, i) => i > 0 && v);
+          if (dateVal) {
+            statementDate = dateVal;
+            debugLog += `  📅 Statement Date found: ${statementDate}\n`;
+          }
+        }
 
         for (const p of PROFILES) {
           if (!p || !p.detectKeys) continue;
@@ -545,6 +557,11 @@ async function processFile(file) {
         const mapped = {};
         for (const [target, mapDef] of Object.entries(currentProfile.mapping)) {
           mapped[target] = resolveCell(row, mapDef, headers);
+        }
+        // For Aetna, override due_date with the statement date from the header
+        if (currentProfile.name === 'Aetna' && statementDate) {
+          mapped['Due Date'] = statementDate;
+          mapped['Rate Effective Date'] = mapped['Rate Effective Date'] || statementDate;
         }
         mapped['_source'] = currentProfile.name;
         return mapped;
