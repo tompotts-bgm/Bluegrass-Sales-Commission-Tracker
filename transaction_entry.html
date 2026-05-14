@@ -848,7 +848,6 @@
 
     const result = calcCommissions();
 
-    // Pull name and address from autofilled client fields
     const clientFirstName = document.getElementById('firstName').value || null;
     const clientLastName  = document.getElementById('lastName').value  || null;
     const clientAddress   = document.getElementById('cfAddress').value || null;
@@ -856,44 +855,88 @@
     const clientState     = document.getElementById('cfState').value   || null;
     const clientZip       = document.getElementById('cfZip').value     || null;
 
-    // Pull monthly renewal and renewal start date from calc result
-    const monthlyRenewalAmt   = (result && !result.error && result.monthlyRenewal) ? result.monthlyRenewal : null;
-    const renewalStartDate    = (result && !result.error && result.renewalStartYear) ? `${result.renewalStartYear}-01-01` : null;
+    const monthlyRenewalAmt = (result && !result.error && result.monthlyRenewal) ? result.monthlyRenewal : null;
+    const renewalStartDate  = (result && !result.error && result.renewalStartYear) ? `${result.renewalStartYear}-01-01` : null;
+    const origCommVal       = getOrigCommissionValue();
 
-    const record = {
-      client_id:              selectedClientId,
-      first_name:             clientFirstName,
-      last_name:              clientLastName,
-      policy_status:          document.getElementById('policyStatus').value,
-      broker:                 document.getElementById('broker').value,
-      date_written:           document.getElementById('dateWritten').value,
-      effective_date:         document.getElementById('effectiveDate').value,
-      election_period:        ep.value,
-      company:                document.getElementById('company').value,
-      product_type:           pt.value,
-      new_to_medicare:        ynState['newMedicare'] || null,
-      new_client:             ynState['newClient']   || null,
-      existing_client:        ynState['existingClient'] || null,
-      orig_commission:        getOrigCommissionValue(),
-      monthly_renewal:        monthlyRenewalAmt,
-      renewal_start_date:     renewalStartDate,
-      address:                clientAddress,
-      city:                   clientCity,
-      state:                  clientState,
-      zip:                    clientZip,
-      commission_matched:     false,
+    // ── Build base record (shared fields across all 25 rows) ──
+    const base = {
+      client_id:               selectedClientId,
+      first_name:              clientFirstName,
+      last_name:               clientLastName,
+      policy_status:           document.getElementById('policyStatus').value,
+      broker:                  document.getElementById('broker').value,
+      date_written:            document.getElementById('dateWritten').value,
+      effective_date:          document.getElementById('effectiveDate').value,
+      election_period:         ep.value,
+      company:                 document.getElementById('company').value,
+      product_type:            pt.value,
+      new_to_medicare:         ynState['newMedicare']    || null,
+      new_client:              ynState['newClient']      || null,
+      existing_client:         ynState['existingClient'] || null,
+      renewal_start_date:      renewalStartDate,
+      address:                 clientAddress,
+      city:                    clientCity,
+      state:                   clientState,
+      zip:                     clientZip,
+      commission_matched:      false,
       commission_matched_date: null,
-      commission_records:     result && !result.error ? result.records : [],
+      commission_records:      result && !result.error ? result.records : [],
     };
 
-    // ── POST to Supabase ─────────────────────────────────────
+    // ── 1 originating row ──────────────────────────────────────
+    const PURCHASE_OVERRIDE = 125.00;
+    const MONTHLY_OVERRIDE  = 5.00;
 
-    showStatus('Saving…', false, true);
+    const originatingRow = {
+      ...base,
+      orig_commission:   origCommVal,
+      monthly_renewal:   null,
+      monthly_override:  null,
+      purchase_override: PURCHASE_OVERRIDE,
+    };
+
+    // ── 12 renewal rows ────────────────────────────────────────
+    const renewalRows = [];
+    if (result && !result.error && result.renewalStartYear) {
+      for (let m = 1; m <= 12; m++) {
+        const mo = String(m).padStart(2,'0');
+        renewalRows.push({
+          ...base,
+          effective_date:    `${result.renewalStartYear}-${mo}-01`,
+          orig_commission:   null,
+          monthly_renewal:   monthlyRenewalAmt,
+          monthly_override:  null,
+          purchase_override: null,
+        });
+      }
+    }
+
+    // ── 12 override rows ───────────────────────────────────────
+    const overrideRows = [];
+    if (result && !result.error && result.renewalStartYear) {
+      for (let m = 1; m <= 12; m++) {
+        const mo = String(m).padStart(2,'0');
+        overrideRows.push({
+          ...base,
+          effective_date:    `${result.renewalStartYear}-${mo}-01`,
+          orig_commission:   null,
+          monthly_renewal:   null,
+          monthly_override:  MONTHLY_OVERRIDE,
+          purchase_override: null,
+        });
+      }
+    }
+
+    const allRows = [originatingRow, ...renewalRows, ...overrideRows];
+
+    showStatus(`Saving ${allRows.length} records…`, false, true);
+
     try {
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/transactions`, {
         method:  'POST',
         headers: HEADERS,
-        body:    JSON.stringify(record)
+        body:    JSON.stringify(allRows)
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
@@ -904,7 +947,7 @@
       const saved = await resp.json();
       const savedId = Array.isArray(saved) ? saved[0]?.id : saved?.id;
       showStatus(
-        `Saved! Transaction ID: ${savedId || '—'}  ·  Choose Copy or New Transaction below.`,
+        `Saved ${allRows.length} records! Transaction ID: ${savedId || '—'}  ·  Choose Copy or New Transaction below.`,
         false, true
       );
       document.getElementById('btnCopy').classList.add('visible');
