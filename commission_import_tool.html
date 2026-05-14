@@ -528,11 +528,16 @@ async function processFile(file) {
       }
       document.getElementById('mapping-section').style.display = 'block';
 
-      // Map all rows — filter out footer/summary rows (no Producer Number AND no Name)
+      // Map all rows — filter out footer/summary rows
       const validRows = rows.filter(row => {
-        const allVals = Object.values(row).map(v => (v||'').toString().trim());
-        const nonEmpty = allVals.filter(v => v).length;
-        return nonEmpty >= 2; // must have at least 2 non-empty fields to be a real data row
+        // For Aetna, Customer Number is always present on real data rows
+        if (currentProfile.name === 'Aetna') {
+          const custNum = (row['Customer Number'] || '').toString().trim();
+          return custNum.length > 0;
+        }
+        // Generic filter: must have at least 2 non-empty fields
+        const nonEmpty = Object.values(row).filter(v => (v||'').toString().trim()).length;
+        return nonEmpty >= 2;
       });
 
       const allMapped = validRows.map(row => {
