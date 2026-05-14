@@ -427,7 +427,6 @@ async function processFile(file) {
 }
 
 async function saveToSupabase(dataRows) {
-  const year=new Date().getFullYear();
   const records=dataRows.map(r=>({
     producer_number:(r['Producer Number']||'').toString().trim()||null,
     product_type:(r['Product Type']||'').toString().trim()||null,
@@ -437,7 +436,12 @@ async function saveToSupabase(dataRows) {
     due_date:(r['Due Date']||'').toString().trim()||null,
     payment_amount:parseFloat((r['Payment Amount']||'').toString().replace(/[$,]/g,''))||null,
     source_company:(r['_source']||'').toString().trim()||null,
-    commission_matched:false, commission_year:year,
+    commission_matched:false,
+    commission_year: (function() {
+      const d = r['Due Date'] || r['Rate Effective Date'] || '';
+      const parsed = new Date(d);
+      return (!isNaN(parsed) && parsed.getFullYear() > 2000) ? parsed.getFullYear() : new Date().getFullYear();
+    })(),
   }));
   const resp=await fetch(`${SUPABASE_URL}/rest/v1/commissions`,{method:'POST',headers:SB_HEADERS,body:JSON.stringify(records)});
   if (!resp.ok) { const b=await resp.text(); throw new Error(`Supabase ${resp.status}: ${b}`); }
