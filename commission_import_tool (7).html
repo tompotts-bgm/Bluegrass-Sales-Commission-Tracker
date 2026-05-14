@@ -178,7 +178,7 @@ footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; bor
     <h3>Known company profiles</h3>
     <div class="profile-list" id="profile-list"></div>
   </div>
-  <footer>Commission Import Tool &nbsp;·&nbsp; Anthem &amp; Humana active &nbsp;·&nbsp; UHC, Wellcare, Aetna, Cigna, GTL coming soon</footer>
+  <footer>Commission Import Tool &nbsp;·&nbsp; Anthem, Humana &amp; Aetna active &nbsp;·&nbsp; UHC, Wellcare, Cigna, GTL coming soon</footer>
 </div>
 
 <script>
@@ -211,8 +211,22 @@ const PROFILES = [
       'Payment Amount':      { col: 'TRNAMT' },
     }
   },
+  ,{
+    name: 'Aetna', color: '#c62828',
+    detectKeys: ['Customer Number','Customer Name','Commission Plan','Total Compensation','Net Compensation','Tax Withholding'],
+    skipRows: 7,
+    mapping: {
+      'Producer Number':     { literal: '6812287' },
+      'Product Type':        { col: 'Commission Plan', transform: 'aetna-product' },
+      'Name / Group Name':   { col: 'Customer Name', transform: 'aetna-name' },
+      'Rate Effective Date': { col: 'Date' },
+      'Rate':                { col: 'Net Compensation' },
+      'Due Date':            { col: 'Date' },
+      'Payment Amount':      { col: 'Net Compensation' },
+    }
+  }
 ];
-const PENDING = ['UHC','Wellcare','Aetna','Cigna','GTL'];
+const PENDING = ['UHC','Wellcare','Cigna','GTL'];
 
 let cleanData = [], quarantineData = [], discardedData = [], currentProfile = null;
 let masterData = [];
@@ -231,11 +245,44 @@ function detectCompany(headers) {
 }
 
 // ── Cell resolver ─────────────────────────────────────────────
+function applyTransform(value, transform) {
+  if (!transform) return value;
+  const v = (value || '').toString().trim();
+
+  if (transform === 'aetna-name') {
+    // Format: "AYERS M,SUSAN" → "AYERS, SUSAN"  or "COLLINS,FARON" → "COLLINS, FARON"
+    // Strip middle initial if present: split on comma, take last word of left side as last name
+    const parts = v.split(',');
+    if (parts.length >= 2) {
+      const lastParts = parts[0].trim().split(' ');
+      const lastName = lastParts[0]; // first token before comma is last name
+      const firstName = parts[1].trim();
+      return `${lastName}, ${firstName}`;
+    }
+    return v;
+  }
+
+  if (transform === 'aetna-product') {
+    // Extract product type from Commission Plan e.g. "I MENG101835742400 MAPD Renewal" → "MAPD"
+    const match = v.match(/\b(MAPD|PDP|MA|MED|DSNP)\b/i);
+    return match ? match[1].toUpperCase() : v;
+  }
+
+  return value;
+}
+
 function resolveCell(row, mapDef, headers) {
   if (!mapDef) return '';
   const upper = {};
   headers.forEach(h => { upper[(h||'').toString().toUpperCase().trim()] = h; });
-  if (mapDef.col) { const k = upper[mapDef.col.toUpperCase()]; return k !== undefined ? (row[k] ?? '') : ''; }
+
+  if (mapDef.literal) return mapDef.literal;
+
+  if (mapDef.col) {
+    const k = upper[mapDef.col.toUpperCase()];
+    const raw = k !== undefined ? (row[k] ?? '') : '';
+    return applyTransform(raw, mapDef.transform);
+  }
   if (mapDef.combine) {
     const parts = mapDef.combine.map(c => { const k = upper[c.toUpperCase()]; return k !== undefined ? (row[k] || '') : ''; });
     if (mapDef.format === 'LAST, FIRST') { const [l,f] = parts; return f ? `${l}, ${f}`.trim().replace(/,\s*$/,'') : l; }
@@ -414,11 +461,34 @@ async function processFile(file) {
     try {
       const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+      // First pass: read with default headers to detect company
+      let rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
       if (!rows.length) { alert('No data found.'); return; }
 
-      const headers = Object.keys(rows[0]);
-      const detected = detectCompany(headers);
+      let headers = Object.keys(rows[0]);
+      let detected = detectCompany(headers);
+
+      // If not detected on first row, try scanning for a profile with skipRows
+      if (!detected) {
+        for (const p of PROFILES) {
+          if (p.skipRows) {
+            const skippedRows = XLSX.utils.sheet_to_json(ws, { defval: '', range: p.skipRows });
+            if (skippedRows.length) {
+              const skippedHeaders = Object.keys(skippedRows[0]);
+              const upper = skippedHeaders.map(h => (h||'').toString().toUpperCase().trim());
+              const score = p.detectKeys.filter(k => upper.includes(k.toUpperCase())).length;
+              const pct = score / p.detectKeys.length;
+              if (pct >= 0.4) {
+                detected = { profile: p, confidence: pct };
+                rows = skippedRows;
+                headers = skippedHeaders;
+                break;
+              }
+            }
+          }
+        }
+      }
 
       document.getElementById('s-file').textContent = file.name;
       document.getElementById('s-rows').textContent = rows.length + ' rows';
