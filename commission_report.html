@@ -144,6 +144,7 @@ footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; pad
   <p class="sub">BluegrassMedicare LLC &nbsp;·&nbsp; Live data from Supabase</p>
 
   <div class="nav">
+    <a href="index.html">← Menu</a>
     <a href="#" class="active">Flexible Report</a>
     <a href="#" style="opacity:0.5;cursor:default;">Exception Report</a>
   </div>
@@ -159,7 +160,17 @@ footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; pad
       </div>
       <div class="filter-group">
         <label>COMPANY</label>
-        <select id="filter-company"><option value="">All Companies</option></select>
+        <select id="filter-company">
+          <option value="">All Companies</option>
+          <option value="Aetna">Aetna</option>
+          <option value="Anthem">Anthem</option>
+          <option value="Cigna">Cigna</option>
+          <option value="Delta Dental">Delta Dental</option>
+          <option value="GTL">GTL</option>
+          <option value="Humana">Humana</option>
+          <option value="UHC">UHC</option>
+          <option value="Wellcare">Wellcare</option>
+        </select>
       </div>
       <div class="filter-group">
         <label>PRODUCT TYPE</label>
@@ -299,18 +310,8 @@ async function loadData() {
   runReport();
 }
 
-// ── Product type normalization ────────────────────────────────────
-const PRODUCT_ALIASES = { 'MS': 'MSUP', 'PD': 'PARTD' };
-function normalizeProduct(val) {
-  if (!val) return val;
-  const upper = val.toString().toUpperCase().trim();
-  return PRODUCT_ALIASES[upper] || upper;
-}
-
 function populateFilters() {
-  const companies = [...new Set(allData.map(r => r.source_company).filter(Boolean))].sort();
-  // Normalize products — show canonical values only (MS→MSUP, PD→PARTD)
-  const products  = [...new Set(allData.map(r => normalizeProduct(r.product_type)).filter(Boolean))].sort();
+  const products  = [...new Set(allData.map(r => r.product_type).filter(Boolean))].sort();
   const producers = [...new Set(allData.map(r => r.producer_number).filter(Boolean))].sort();
   const years = [...new Set(allData.map(r => r.commission_year).filter(Boolean))].sort().reverse();
 
@@ -320,7 +321,7 @@ function populateFilters() {
       const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o);
     });
   }
-  fill('filter-company', companies);
+  // Company dropdown is hardcoded in HTML — skip dynamic population
   fill('filter-product', products);
   fill('filter-producer', producers);
   fill('filter-year', years);
@@ -342,8 +343,7 @@ function applyFilters() {
   filteredData = allData.filter(function(r) {
     if (client   && !(r.name_group_name||'').toLowerCase().includes(client)) return false;
     if (company  && r.source_company  !== company)  return false;
-    // Use normalized comparison so MS matches MSUP, PD matches PARTD
-    if (product  && normalizeProduct(r.product_type) !== normalizeProduct(product)) return false;
+    if (product  && r.product_type    !== product)  return false;
     if (producer && r.producer_number !== producer) return false;
     if (month) {
       const d = r.created_at ? new Date(r.created_at) : null;
