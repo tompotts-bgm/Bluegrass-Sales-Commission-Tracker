@@ -110,9 +110,10 @@
   <div class="body">
 
     <div class="lookup-bar">
-      <input type="text" id="lookupInput" placeholder="Enter Client ID or Last Name to load existing record…" />
+      <input type="text" id="lookupInput" placeholder="Client ID or Last Name…" />
       <button onclick="lookupClient()">Load Client</button>
       <button onclick="clearForm()">New Client</button>
+      <a href="index.html" style="font-size:12px;padding:6px 14px;border:1px solid #ccc;border-radius:6px;text-decoration:none;color:#333;background:#f8f8f8;white-space:nowrap;margin-left:auto;">← Menu</a>
     </div>
 
     <div class="section">
@@ -126,7 +127,7 @@
           <label>Status</label>
           <select id="fldStatus">
             <option value="">— Select —</option>
-            <option value="C">Client</option>
+            <option value="C" selected>Client</option>
             <option value="P">Prospect</option>
             <option value="F">Former Client</option>
             <option value="N">Not a Prospect</option>
@@ -262,7 +263,7 @@
       <div class="btn-row-left">
         <button class="btn-delete" onclick="confirmDelete()">Delete</button>
       </div>
-      <button onclick="clearForm()">New Client</button>
+      <button onclick="clearForm()">Start Over</button>
       <button class="btn-save" onclick="saveClient()">Save Client</button>
     </div>
 
@@ -501,6 +502,7 @@
     document.querySelectorAll('select').forEach(el => {
       el.selectedIndex = 0;
       if (el.id === 'fldState') el.value = 'KY';
+      if (el.id === 'fldStatus') el.value = 'C';
     });
     document.querySelectorAll('input[type=checkbox]').forEach(el => el.checked = false);
     document.querySelectorAll('input[type=radio]').forEach(el => el.checked = false);
