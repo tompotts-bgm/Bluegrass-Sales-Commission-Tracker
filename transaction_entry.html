@@ -118,6 +118,8 @@
     .btn-save:hover { background: #1e3570; border-color: #1e3570; }
     .btn-exit { background: #fff; color: #666; border-color: #b8d99a; }
     .btn-exit:hover { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+    .btn-menu { font-size: 12px; padding: 6px 14px; border: 1px solid rgba(255,255,255,0.4); border-radius: 6px; text-decoration: none; color: #fff; background: rgba(255,255,255,0.1); white-space: nowrap; transition: background 0.15s, border-color 0.15s; margin-left: auto; }
+    .btn-menu:hover { background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.7); }
     .btn-copy { display: none; background: #6DB33F; color: #fff; border-color: #6DB33F; font-size: 13px; padding: 9px 20px; }
     .btn-copy:hover { background: #559030; border-color: #559030; }
     .btn-copy.visible { display: inline-block; }
@@ -140,6 +142,7 @@
         <div class="header-title">New Policy Transaction</div>
         <div class="header-status" id="headerStatus">Ready for new entry</div>
       </div>
+      <a href="index.html" class="btn-menu">← Menu</a>
     </div>
 
     <div class="body">
@@ -968,8 +971,7 @@
   // ── EXIT ──────────────────────────────────────────────────────────
   function exitNoChange() {
     if (confirm('Exit without saving? Any unsaved data will be lost.')) {
-      showStatus('Exited without saving.', false, false);
-      setTimeout(resetForm, 1500);
+      window.location.href = 'index.html';
     }
   }
 </script>
