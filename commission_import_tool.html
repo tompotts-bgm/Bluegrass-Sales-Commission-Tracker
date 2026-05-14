@@ -168,7 +168,8 @@ footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; bor
   </div>
 
   <div id="actions">
-    <button class="primary" id="btn-export">⬇ Download merged .xlsx</button>
+    <button class="primary" id="btn-save">💾 Save to Database</button>
+    <button id="btn-export">⬇ Download .xlsx</button>
     <button id="btn-export-discarded" style="display:none">⬇ Download discarded rows</button>
     <button id="btn-reset">↩ Import another file</button>
     <button id="btn-clear">🗑 Clear stored data</button>
@@ -748,7 +749,35 @@ dz.addEventListener('dragleave', () => dz.classList.remove('hover'));
 dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('hover'); if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]); });
 fi.addEventListener('change', () => { if (fi.files[0]) processFile(fi.files[0]); });
 
-document.getElementById('btn-export').addEventListener('click', exportXlsx);
+document.getElementById('btn-save').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    await saveToSupabase(cleanData);
+    alert('Saved ' + cleanData.length + ' rows to Supabase successfully.');
+  } catch(e) {
+    alert('Supabase save failed: ' + e.message);
+  }
+  btn.disabled = false;
+  btn.textContent = '💾 Save to Database';
+});
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  const allData = [...masterData, ...cleanData];
+  const wsData = [
+    OUTPUT_COLS.concat(['Source Company']),
+    ...allData.map(r => OUTPUT_COLS.map(c => r[c] ?? '').concat([r['_source'] || '']))
+  ];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [18,14,24,18,10,14,16,16].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws, 'Commission Data');
+  XLSX.writeFile(wb, 'commission_merged.xlsx');
+  masterData = allData;
+  try { localStorage.setItem('commissionMaster', JSON.stringify(masterData)); } catch(e) {}
+  alert('Downloaded ' + allData.length + ' rows to Excel.');
+});
 document.getElementById('btn-export-discarded').addEventListener('click', exportDiscarded);
 
 document.getElementById('btn-reset').addEventListener('click', () => {
