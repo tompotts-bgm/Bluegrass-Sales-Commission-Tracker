@@ -260,6 +260,8 @@ function applyTransform(value, transform) {
     }
     return v;
   }
+
+  if (transform === 'aetna-name') {
     // Format: "AYERS M,SUSAN" → "AYERS, SUSAN"  or "COLLINS,FARON" → "COLLINS, FARON"
     // Strip middle initial if present: split on comma, take last word of left side as last name
     const parts = v.split(',');
