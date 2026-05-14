@@ -489,15 +489,19 @@ or
       const fuzzyPairs = [];
       const matchedCommissionIds = new Set();
 
+
+      // DEBUG — show normalized names on both sides
+      const debugTx = transactions.map(t => normalizeTransactionName(t.first_name, t.last_name));
+      const debugComm = commNorm.map(c => c._normName);
+      alert("TRANSACTION names:\n" + debugTx.join("\n") + "\n\nCOMMISSION names:\n" + debugComm.join("\n"));
       for (const tx of transactions) {
         const txName   = normalizeTransactionName(tx.first_name, tx.last_name);
         const txAmount = parseFloat(tx.orig_commission) || parseFloat(tx.monthly_renewal) || 0;
 
-        // Tier 1: exact name + amount within $1
+        // Tier 1: exact name only (amount check temporarily disabled for testing)
         const exactCandidate = commNorm.find(c =>
           !matchedCommissionIds.has(c.id) &&
-          c._normName === txName &&
-          amountMatch(txAmount, c._amount)
+          c._normName === txName
         );
 
         if (exactCandidate) {
@@ -506,10 +510,9 @@ or
           continue;
         }
 
-        // Tier 2: amount matches but name doesn't — send to fuzzy queue
+        // Tier 2: no exact name match — send to fuzzy queue (amount check temporarily disabled)
         const fuzzyCandidate = commNorm.find(c =>
-          !matchedCommissionIds.has(c.id) &&
-          amountMatch(txAmount, c._amount)
+          !matchedCommissionIds.has(c.id)
         );
 
         if (fuzzyCandidate) {
