@@ -211,7 +211,8 @@ const PROFILES = [
       'Payment Amount':      { col: 'TRNAMT' },
     }
   },
-  ,{
+  ,
+  {
     name: 'Aetna', color: '#c62828',
     detectKeys: ['Customer Number','Customer Name','Commission Plan','Total Compensation','Net Compensation','Tax Withholding'],
     skipRows: 7,
@@ -462,41 +463,40 @@ async function processFile(file) {
       const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
 
-      // First pass: read with default headers to detect company
-      let rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-      if (!rows.length) { alert('No data found.'); return; }
+      // Read all rows as raw arrays first so we can find the real header row
+      const rawRows = XLSX.utils.sheet_to_json(ws, { defval: '', header: 1 });
 
-      let headers = Object.keys(rows[0]);
-      let detected = detectCompany(headers);
+      let rows = [], headers = [], detected = null;
+      let debugLog = 'Scanning rows for headers:\n';
 
-      // If not detected on first row, scan each row to find the header row
-      let debugLog = 'First pass headers: ' + JSON.stringify(headers) + '\n\nScanning rows:\n';
-      if (!detected) {
-        const rawRows = XLSX.utils.sheet_to_json(ws, { defval: '', header: 1 });
-        for (let r = 1; r < Math.min(rawRows.length, 20); r++) {
-          const candidateHeaders = rawRows[r].map(h => (h||'').toString().trim());
-          debugLog += `Row ${r}: ${JSON.stringify(candidateHeaders)}\n`;
-          if (!candidateHeaders.some(h => h)) continue; // skip empty rows
-          for (const p of PROFILES) {
-            if (!p.skipRows) continue;
-            const upper = candidateHeaders.map(h => h.toUpperCase());
-            const score = p.detectKeys.filter(k => upper.includes(k.toUpperCase())).length;
-            const pct = score / p.detectKeys.length;
-            debugLog += `  → ${p.name}: score=${score}/${p.detectKeys.length} (${Math.round(pct*100)}%)\n`;
-            if (pct >= 0.4) {
-              detected = { profile: p, confidence: pct };
-              rows = XLSX.utils.sheet_to_json(ws, { defval: '', range: r });
-              headers = Object.keys(rows[0] || {});
-              break;
-            }
+      // Scan first 20 rows looking for a profile match
+      for (let r = 0; r < Math.min(rawRows.length, 20); r++) {
+        const candidateHeaders = rawRows[r].map(h => (h||'').toString().trim());
+        debugLog += `Row ${r}: ${JSON.stringify(candidateHeaders)}\n`;
+        if (!candidateHeaders.some(h => h)) continue;
+
+        for (const p of PROFILES) {
+          if (!p || !p.detectKeys) continue;
+          const upper = candidateHeaders.map(h => h.toUpperCase());
+          const score = p.detectKeys.filter(k => upper.includes(k.toUpperCase())).length;
+          const pct = score / p.detectKeys.length;
+          if (pct > 0) debugLog += `  → ${p.name}: ${score}/${p.detectKeys.length} (${Math.round(pct*100)}%)\n`;
+          if (pct >= 0.4) {
+            detected = { profile: p, confidence: pct };
+            rows = XLSX.utils.sheet_to_json(ws, { defval: '', range: r });
+            headers = Object.keys(rows[0] || {});
+            debugLog += `  ✅ MATCHED ${p.name} at row ${r}\n`;
+            break;
           }
-          if (detected) break;
         }
+        if (detected) break;
       }
 
       // Show debug on page
       const dbg = document.getElementById('debug-output');
       if (dbg) { dbg.style.display = 'block'; dbg.innerText = debugLog; }
+
+      if (!rows.length && !detected) { alert('No data found.'); return; }
 
       document.getElementById('s-file').textContent = file.name;
       document.getElementById('s-rows').textContent = rows.length + ' rows';
