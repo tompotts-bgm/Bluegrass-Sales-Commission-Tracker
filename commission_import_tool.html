@@ -528,8 +528,14 @@ async function processFile(file) {
       }
       document.getElementById('mapping-section').style.display = 'block';
 
-      // Map all rows
-      const allMapped = rows.map(row => {
+      // Map all rows — filter out footer/summary rows (no Producer Number AND no Name)
+      const validRows = rows.filter(row => {
+        const allVals = Object.values(row).map(v => (v||'').toString().trim());
+        const nonEmpty = allVals.filter(v => v).length;
+        return nonEmpty >= 2; // must have at least 2 non-empty fields to be a real data row
+      });
+
+      const allMapped = validRows.map(row => {
         const mapped = {};
         for (const [target, mapDef] of Object.entries(currentProfile.mapping)) {
           mapped[target] = resolveCell(row, mapDef, headers);
