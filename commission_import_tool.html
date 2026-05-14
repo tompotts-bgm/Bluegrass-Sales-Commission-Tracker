@@ -222,7 +222,7 @@ const PROFILES = [
       'Name / Group Name':   { col: 'Customer Name', transform: 'aetna-name' },
       'Rate Effective Date': { col: 'Date' },
       'Rate':                { col: 'Net Compensation' },
-      'Due Date':            { col: 'Date' },
+      'Due Date':            { literal: '__STATEMENT_DATE__' },
       'Payment Amount':      { col: 'Net Compensation' },
     }
   }
@@ -558,10 +558,10 @@ async function processFile(file) {
         for (const [target, mapDef] of Object.entries(currentProfile.mapping)) {
           mapped[target] = resolveCell(row, mapDef, headers);
         }
-        // For Aetna, override due_date with the statement date from the header
+        // Replace statement date placeholder for Aetna
         if (currentProfile.name === 'Aetna' && statementDate) {
-          mapped['Due Date'] = statementDate;
-          mapped['Rate Effective Date'] = mapped['Rate Effective Date'] || statementDate;
+          if (mapped['Due Date'] === '__STATEMENT_DATE__') mapped['Due Date'] = statementDate;
+          if (!mapped['Rate Effective Date']) mapped['Rate Effective Date'] = statementDate;
         }
         mapped['_source'] = currentProfile.name;
         return mapped;
@@ -690,9 +690,9 @@ async function saveToSupabase(dataRows) {
     product_type:        (r['Product Type']         || '').toString().trim() || null,
     name_group_name:     (r['Name / Group Name']    || '').toString().trim() || null,
     rate_effective_date: (r['Rate Effective Date']  || '').toString().trim() || null,
-    rate:                parseFloat(r['Rate'])       || null,
+    rate:                parseFloat((r['Rate'] || '').toString().replace(/[$,]/g, '')) || null,
     due_date:            (r['Due Date']             || '').toString().trim() || null,
-    payment_amount:      parseFloat(r['Payment Amount']) || null,
+    payment_amount:      parseFloat((r['Payment Amount'] || '').toString().replace(/[$,]/g, '')) || null,
     source_company:      (r['_source']              || '').toString().trim() || null,
     commission_matched:  false,
     commission_year:     commissionYear,
