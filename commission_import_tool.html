@@ -153,7 +153,7 @@ footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; bor
     <button id="btn-export">⬇ Download .xlsx</button>
     <button id="btn-export-discarded" style="display:none">⬇ Download discarded rows</button>
     <button id="btn-reset">↩ Import another file</button>
-    <button id="btn-clear">🗑 Clear stored data</button>
+    <button id="btn-clear">🗑 Clear this upload</button>
   </div>
   <div id="profiles-section">
     <h3>Known company profiles</h3>
@@ -267,8 +267,25 @@ function hideProgress() { document.getElementById('progress-wrap').style.display
 function looksSuspicious(row) {
   const name = (row['Name / Group Name'] || '').toString().trim();
   const amt = (row['Payment Amount'] || '').toString().replace(/[$,]/g,'');
-  if (!name || name.includes('_') || /^\d+$/.test(name)) return true;
+
+  // Name checks — only flag truly bad names
+  if (!name) return true;
+  if (name.includes('_')) return true;                          // underscores = identifier/code
+  if (/^\d+$/.test(name)) return true;                         // all digits
+  if (name.length < 2) return true;                            // too short
+  if (/^[^a-zA-Z]/.test(name)) return true;                   // starts with non-letter
+
+  // Allow names with suffixes (JR, SR, II, III, IV etc) and punctuation
+  // Only flag if name looks like a code/identifier (has digits mixed with letters in odd patterns)
+  const stripped = name.replace(/[,.\s\-']/g,'');              // remove common punctuation
+  if (/\d/.test(stripped) && !/^[A-Z]+\d+$/.test(stripped.toUpperCase())) {
+    // Has digits but not in a simple alphanumeric pattern — likely a code
+    if ((stripped.match(/\d/g)||[]).length > 3) return true;   // more than 3 digits = suspicious
+  }
+
+  // Amount checks
   if (!amt || parseFloat(amt) === 0) return true;
+
   return false;
 }
 
@@ -512,9 +529,16 @@ document.getElementById('btn-reset').addEventListener('click',()=>{
 });
 
 document.getElementById('btn-clear').addEventListener('click',()=>{
-  if(confirm('Clear all stored commission data? This cannot be undone.')){
-    masterData=[]; try{localStorage.removeItem('commissionMaster');}catch(e){}
-    alert('Stored data cleared.');
+  if(confirm('Clear this upload? This will remove the current data from working memory. Nothing will be deleted from the database.')){
+    cleanData=[]; quarantineData=[]; discardedData=[];
+    document.getElementById('preview-body').innerHTML='';
+    document.getElementById('quarantine-list').innerHTML='';
+    document.getElementById('preview-section').style.display='none';
+    document.getElementById('quarantine-section').style.display='none';
+    document.getElementById('btn-export-discarded').style.display='none';
+    document.getElementById('s-clean').textContent='—';
+    document.getElementById('s-flagged').textContent='—';
+    document.getElementById('s-status').innerHTML='<span class="badge badge-warning">Cleared — drop file again to reimport</span>';
   }
 });
 
