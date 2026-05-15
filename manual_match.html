@@ -121,6 +121,8 @@ function calcPayDate(effectiveDate) {
   d.setUTCMonth(d.getUTCMonth() + 1);
   return (d.getUTCMonth()+1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear();
 }
+
+function fmtDate(d) {
   if (!d) return '—';
   const dt = new Date(d);
   if (isNaN(dt)) return d;
