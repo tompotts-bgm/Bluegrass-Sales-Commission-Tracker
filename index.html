@@ -6,190 +6,53 @@
   <title>Bluegrass Medicare — Commission Tracker</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      background: #d8eecb;
-      font-family: Georgia, serif;
-      padding: 30px 16px;
-      min-height: 100vh;
-    }
-
-    .wrap {
-      max-width: 560px;
-      margin: 0 auto;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.10);
-    }
-
-    /* ── HEADER ── */
-    .header {
-      background: #2B4899;
-      padding: 18px 24px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    .header-right {
-      border-left: 2px solid #6DB33F;
-      padding-left: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .header-title {
-      color: #fff;
-      font-size: 16px;
-      font-weight: bold;
-      font-family: Georgia, serif;
-      letter-spacing: 0.02em;
-    }
-    .header-sub {
-      color: #6DB33F;
-      font-size: 12px;
-      font-family: Arial, sans-serif;
-    }
-
-    /* ── BODY ── */
-    .body {
-      background: #eef7e8;
-      border: 1px solid #c5dfa8;
-      border-top: none;
-      border-radius: 0 0 10px 10px;
-      padding: 24px 22px 28px;
-    }
-
-    .menu-intro {
-      font-size: 13px;
-      font-family: Arial, sans-serif;
-      color: #555;
-      margin-bottom: 20px;
-      line-height: 1.5;
-    }
-
-    /* ── MENU ITEMS ── */
+    body { background: #d8eecb; font-family: Georgia, serif; padding: 30px 16px; min-height: 100vh; }
+    .wrap { max-width: 560px; margin: 0 auto; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.10); }
+    .header { background: #2B4899; padding: 18px 24px; display: flex; align-items: center; gap: 16px; }
+    .header-right { border-left: 2px solid #6DB33F; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; }
+    .header-title { color: #fff; font-size: 16px; font-weight: bold; font-family: Georgia, serif; letter-spacing: 0.02em; }
+    .header-sub { color: #6DB33F; font-size: 12px; font-family: Arial, sans-serif; }
+    .body { background: #eef7e8; border: 1px solid #c5dfa8; border-top: none; border-radius: 0 0 10px 10px; padding: 24px 22px 28px; }
+    .menu-intro { font-size: 13px; font-family: Arial, sans-serif; color: #555; margin-bottom: 20px; line-height: 1.5; }
     .menu-item { margin-bottom: 8px; }
-
-    .menu-btn {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 13px 18px;
-      background: #fff;
-      border: 1px solid #c5dfa8;
-      border-radius: 8px;
-      cursor: pointer;
-      text-decoration: none;
-      color: inherit;
-      transition: background 0.12s, border-color 0.12s;
-      font-family: Arial, sans-serif;
-    }
+    .menu-btn { width: 100%; display: flex; align-items: center; gap: 14px; padding: 13px 18px; background: #fff; border: 1px solid #c5dfa8; border-radius: 8px; cursor: pointer; text-decoration: none; color: inherit; transition: background 0.12s, border-color 0.12s; font-family: Arial, sans-serif; }
     .menu-btn:hover { background: #e8f4fd; border-color: #2B4899; }
     .menu-btn.coming-soon { opacity: 0.55; cursor: not-allowed; pointer-events: none; }
     .menu-btn.expandable { justify-content: space-between; }
-
     .menu-btn-left { display: flex; align-items: center; gap: 14px; }
     .menu-icon { font-size: 22px; flex-shrink: 0; }
     .menu-text { display: flex; flex-direction: column; gap: 2px; text-align: left; }
     .menu-label { font-size: 14px; font-weight: 600; color: #1a1a2e; }
     .menu-desc { font-size: 12px; color: #777; }
-
-    .coming-badge {
-      font-size: 11px;
-      background: #fff3e0;
-      color: #e65100;
-      border: 1px solid #ffcc80;
-      border-radius: 4px;
-      padding: 2px 8px;
-      font-family: Arial, sans-serif;
-      white-space: nowrap;
-    }
-
-    /* ── ARROW ── */
-    .menu-arrow {
-      font-size: 11px;
-      color: #aaa;
-      transition: transform 0.2s;
-      flex-shrink: 0;
-    }
+    .coming-badge { font-size: 11px; background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; border-radius: 4px; padding: 2px 8px; font-family: Arial, sans-serif; white-space: nowrap; }
+    .menu-arrow { font-size: 11px; color: #aaa; transition: transform 0.2s; flex-shrink: 0; }
     .menu-arrow.open { transform: rotate(90deg); }
-
-    /* ── SUB-MENU ── */
-    .sub-menu {
-      display: none;
-      background: #f5faf2;
-      border: 1px solid #c5dfa8;
-      border-top: none;
-      border-radius: 0 0 8px 8px;
-      overflow: hidden;
-      margin-top: -4px;
-    }
+    .sub-menu { display: none; background: #f5faf2; border: 1px solid #c5dfa8; border-top: none; border-radius: 0 0 8px 8px; overflow: hidden; margin-top: -4px; }
     .sub-menu.open { display: block; }
-
-    .sub-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 11px 20px 11px 28px;
-      border-bottom: 1px solid #dcefd3;
-      text-decoration: none;
-      color: inherit;
-      font-family: Arial, sans-serif;
-      transition: background 0.1s;
-    }
+    .sub-item { display: flex; align-items: center; gap: 12px; padding: 11px 20px 11px 28px; border-bottom: 1px solid #dcefd3; text-decoration: none; color: inherit; font-family: Arial, sans-serif; transition: background 0.1s; }
     .sub-item:last-child { border-bottom: none; }
     .sub-item:hover { background: #e3f2fd; }
     .sub-item.coming-soon { opacity: 0.55; cursor: not-allowed; pointer-events: none; }
-
     .sub-icon { font-size: 16px; flex-shrink: 0; }
     .sub-text { display: flex; flex-direction: column; gap: 2px; flex: 1; }
     .sub-label { font-size: 13px; font-weight: 600; color: #1a1a2e; }
     .sub-desc { font-size: 11px; color: #777; }
-    .sub-badge {
-      font-size: 10px;
-      background: #fff3e0;
-      color: #e65100;
-      border: 1px solid #ffcc80;
-      border-radius: 4px;
-      padding: 2px 7px;
-      white-space: nowrap;
-    }
-
-    /* ── DIVIDER ── */
-    .menu-divider {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #999;
-      font-family: Arial, sans-serif;
-      padding: 14px 4px 6px;
-    }
-
-    footer {
-      margin-top: 2rem;
-      font-size: 12px;
-      color: #888;
-      text-align: center;
-      font-family: Arial, sans-serif;
-    }
+    .sub-badge { font-size: 10px; background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; border-radius: 4px; padding: 2px 7px; white-space: nowrap; }
+    .menu-divider { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #999; font-family: Arial, sans-serif; padding: 14px 4px 6px; }
+    footer { margin-top: 2rem; font-size: 12px; color: #888; text-align: center; font-family: Arial, sans-serif; }
   </style>
 </head>
 <body>
 <div class="wrap">
-
   <div class="header">
     <div class="header-right">
       <div class="header-title">Bluegrass Medicare</div>
       <div class="header-sub">Commission Tracker — Main Menu</div>
     </div>
   </div>
-
   <div class="body">
-
     <p class="menu-intro">Select a module below to get started.</p>
 
-    <!-- ── Data Entry ── -->
     <div class="menu-divider">Data Entry</div>
 
     <div class="menu-item">
@@ -217,12 +80,11 @@
         <span class="menu-icon">📊</span>
         <span class="menu-text">
           <span class="menu-label">Commission Import</span>
-          <span class="menu-desc">Import carrier spreadsheets — Anthem &amp; Humana active</span>
+          <span class="menu-desc">Import carrier spreadsheets — Anthem, Humana &amp; Aetna active</span>
         </span>
       </a>
     </div>
 
-    <!-- ── Reports ── -->
     <div class="menu-divider">Reports</div>
 
     <div class="menu-item">
@@ -254,7 +116,6 @@
       </div>
     </div>
 
-    <!-- ── Admin ── -->
     <div class="menu-divider">Administration</div>
 
     <div class="menu-item">
@@ -268,7 +129,6 @@
       </div>
     </div>
 
-    <!-- ── Commission Reconciliation ── -->
     <div class="menu-divider">Commission Reconciliation</div>
 
     <div class="menu-item">
@@ -290,14 +150,13 @@
             <span class="sub-desc">Automatic pass — match by name and amount</span>
           </span>
         </a>
-        <div class="sub-item coming-soon">
+        <a class="sub-item" href="manual_match.html">
           <span class="sub-icon">🤝</span>
           <span class="sub-text">
             <span class="sub-label">Manual Match</span>
             <span class="sub-desc">Hand-match commissions that didn't auto-match</span>
           </span>
-          <span class="sub-badge">Coming Soon</span>
-        </div>
+        </a>
         <div class="sub-item coming-soon">
           <span class="sub-icon">⚠️</span>
           <span class="sub-text">
@@ -323,6 +182,5 @@
     arrow.classList.toggle('open', !isOpen);
   }
 </script>
-
 </body>
 </html>
