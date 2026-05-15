@@ -135,17 +135,17 @@ function setStatus(msg, isError) {
 
 async function searchTransactions(name) {
   const q = encodeURIComponent(`%${name}%`);
-  const url = `${SUPABASE_URL}/rest/v1/transactions?commission_matched=is.false&last_name=ilike.${q}&select=id,first_name,last_name,company,effective_date,due_date,orig_commission,monthly_renewal,purchase_override&order=last_name.asc,effective_date.asc`;
+  const url = `${SUPABASE_URL}/rest/v1/transactions?select=id,first_name,last_name,company,effective_date,due_date,orig_commission,monthly_renewal,purchase_override&commission_matched=eq.false&last_name=ilike.${q}&order=last_name.asc,effective_date.asc`;
   const resp = await fetch(url, { headers: HEADERS });
-  if (!resp.ok) throw new Error('Transactions: ' + resp.status + ' ' + await resp.text());
+  if (!resp.ok) throw new Error('Transactions ' + resp.status + ': ' + await resp.text());
   return await resp.json();
 }
 
 async function searchCommissions(name) {
   const q = encodeURIComponent(`%${name}%`);
-  const url = `${SUPABASE_URL}/rest/v1/commissions?commission_matched=is.false&name_group_name=ilike.${q}&select=id,name_group_name,rate_effective_date,due_date,payment_amount,source_company&order=name_group_name.asc,rate_effective_date.asc`;
+  const url = `${SUPABASE_URL}/rest/v1/commissions?select=id,name_group_name,rate_effective_date,due_date,payment_amount,source_company&commission_matched=eq.false&name_group_name=ilike.${q}&order=name_group_name.asc,rate_effective_date.asc`;
   const resp = await fetch(url, { headers: HEADERS });
-  if (!resp.ok) throw new Error('Commissions: ' + resp.status + ' ' + await resp.text());
+  if (!resp.ok) throw new Error('Commissions ' + resp.status + ': ' + await resp.text());
   return await resp.json();
 }
 
