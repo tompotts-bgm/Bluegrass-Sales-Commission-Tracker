@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual Match</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #d8eecb; font-family: Georgia, serif; padding: 20px 16px; min-height: 100vh; }
+
+.app-wrap { max-width: 1300px; margin: 0 auto; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 18px rgba(0,0,0,0.13); }
+
+/* Header */
+.header { background: #2B4899; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+.header img { height: 48px; }
+.header-text { display: flex; flex-direction: column; gap: 4px; border-left: 2px solid #6DB33F; padding-left: 16px; flex: 1; }
+.header-title { color: #fff; font-size: 15px; font-weight: bold; letter-spacing: 0.02em; }
+.header-sub { font-size: 12px; font-family: Arial, sans-serif; color: #c5dfa8; }
+.btn-menu { font-size: 12px; padding: 6px 14px; border: 1px solid rgba(255,255,255,0.4); border-radius: 6px; text-decoration: none; color: #fff; background: rgba(255,255,255,0.1); white-space: nowrap; transition: background 0.15s; font-family: Arial, sans-serif; }
+.btn-menu:hover { background: rgba(255,255,255,0.25); }
+
+/* Search bar */
+.search-bar { background: #fff; border-bottom: 2px solid #6DB33F; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+.search-bar input { flex: 1; padding: 9px 14px; border: 1px solid #c5dfa8; border-radius: 7px; font-size: 14px; font-family: Arial, sans-serif; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+.search-bar input:focus { border-color: #2B4899; box-shadow: 0 0 0 2px rgba(43,72,153,0.15); }
+.btn-search { background: #2B4899; color: #fff; border: none; padding: 9px 22px; border-radius: 7px; font-size: 13px; font-family: Arial, sans-serif; font-weight: bold; cursor: pointer; transition: background 0.15s; }
+.btn-search:hover { background: #1e357a; }
+#status-msg { font-size: 13px; font-family: Arial, sans-serif; color: #666; min-width: 180px; }
+#status-msg.error { color: #c0392b; }
+
+/* Body */
+.body { background: #f4fbee; border: 1px solid #c5dfa8; border-top: none; border-radius: 0 0 10px 10px; padding: 20px 24px; }
+
+/* Two column layout */
+.columns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+.col-header { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #2B4899; border-bottom: 2px solid #6DB33F; padding-bottom: 4px; margin-bottom: 14px; font-family: Arial, sans-serif; display: flex; justify-content: space-between; align-items: center; }
+.col-header .count { font-size: 12px; font-weight: normal; color: #888; text-transform: none; letter-spacing: 0; }
+
+/* Record cards */
+.record-card { background: #fff; border: 1px solid #b8d99a; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; font-family: Arial, sans-serif; transition: box-shadow 0.15s; }
+.record-card:hover { box-shadow: 0 2px 8px rgba(43,72,153,0.12); }
+.card-name { font-size: 14px; font-weight: bold; color: #1a1a2e; margin-bottom: 6px; }
+.card-row { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; border-bottom: 1px solid #f0f7e8; }
+.card-row:last-child { border-bottom: none; }
+.card-row .lbl { color: #888; }
+.card-row .val { font-weight: 600; color: #333; }
+.card-row .val.amount { color: #2B4899; }
+.card-type { font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; color: #6DB33F; margin-bottom: 4px; }
+
+.empty-state { text-align: center; padding: 3rem 1rem; color: #aaa; font-family: Arial, sans-serif; font-size: 14px; }
+.empty-state .icon { font-size: 36px; margin-bottom: 10px; }
+
+.spinner { display: none; text-align: center; padding: 2rem; color: #888; font-family: Arial, sans-serif; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="app-wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <img src="logo.png" alt="Bluegrass Medicare Logo" />
+    <div class="header-text">
+      <div class="header-title">Manual Match</div>
+      <div class="header-sub">Search unmatched transactions and commissions by client name</div>
+    </div>
+    <a href="index.html" class="btn-menu">← Menu</a>
+  </div>
+
+  <!-- Search bar -->
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="Enter client last name or full name…" />
+    <button class="btn-search" onclick="doSearch()">Search</button>
+    <span id="status-msg"></span>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+    <div class="columns">
+
+      <!-- Transactions -->
+      <div>
+        <div class="col-header">
+          Transactions
+          <span class="count" id="tx-count"></span>
+        </div>
+        <div id="tx-spinner" class="spinner">Searching transactions…</div>
+        <div id="tx-list">
+          <div class="empty-state"><div class="icon">🔍</div>Enter a name to search</div>
+        </div>
+      </div>
+
+      <!-- Commissions -->
+      <div>
+        <div class="col-header">
+          Commission Records
+          <span class="count" id="cm-count"></span>
+        </div>
+        <div id="cm-spinner" class="spinner">Searching commissions…</div>
+        <div id="cm-list">
+          <div class="empty-state"><div class="icon">🔍</div>Enter a name to search</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
+const HEADERS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_KEY
+};
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (isNaN(dt)) return d;
+  return (dt.getUTCMonth()+1) + '/' + dt.getUTCDate() + '/' + dt.getUTCFullYear();
+}
+
+function fmtAmt(v) {
+  const n = parseFloat(v);
+  if (isNaN(n) || n === 0) return '—';
+  return '$' + n.toFixed(2);
+}
+
+function setStatus(msg, isError) {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.className = isError ? 'error' : '';
+}
+
+async function searchTransactions(name) {
+  // Search by last_name ilike or full name
+  const q = encodeURIComponent(`%${name}%`);
+  const url = `${SUPABASE_URL}/rest/v1/transactions?commission_matched=is.false&or=(last_name.ilike.${q},first_name.ilike.${q})&select=id,first_name,last_name,company,effective_date,due_date,orig_commission,monthly_renewal,purchase_override&order=last_name.asc,effective_date.asc`;
+  const resp = await fetch(url, { headers: HEADERS });
+  if (!resp.ok) throw new Error('Failed to fetch transactions: ' + resp.status);
+  return await resp.json();
+}
+
+async function searchCommissions(name) {
+  const q = encodeURIComponent(`%${name}%`);
+  const url = `${SUPABASE_URL}/rest/v1/commissions?commission_matched=is.false&name_group_name=ilike.${q}&select=id,name_group_name,rate_effective_date,due_date,payment_amount,source_company&order=name_group_name.asc,rate_effective_date.asc`;
+  const resp = await fetch(url, { headers: HEADERS });
+  if (!resp.ok) throw new Error('Failed to fetch commissions: ' + resp.status);
+  return await resp.json();
+}
+
+function renderTransactions(records) {
+  const list = document.getElementById('tx-list');
+  document.getElementById('tx-count').textContent = records.length + ' found';
+  if (!records.length) {
+    list.innerHTML = '<div class="empty-state"><div class="icon">📭</div>No unmatched transactions found</div>';
+    return;
+  }
+  list.innerHTML = records.map(r => `
+    <div class="record-card">
+      <div class="card-type">Transaction #${r.id}</div>
+      <div class="card-name">${(r.last_name||'')}${r.last_name && r.first_name ? ', ' : ''}${(r.first_name||'')}</div>
+      <div class="card-row"><span class="lbl">Company</span><span class="val">${r.company||'—'}</span></div>
+      <div class="card-row"><span class="lbl">Effective Date</span><span class="val">${fmtDate(r.effective_date)}</span></div>
+      <div class="card-row"><span class="lbl">Pay Date</span><span class="val">${fmtDate(r.due_date)}</span></div>
+      <div class="card-row"><span class="lbl">Orig Commission</span><span class="val amount">${fmtAmt(r.orig_commission)}</span></div>
+      <div class="card-row"><span class="lbl">Monthly Renewal</span><span class="val amount">${fmtAmt(r.monthly_renewal)}</span></div>
+      <div class="card-row"><span class="lbl">Purchase Override</span><span class="val amount">${fmtAmt(r.purchase_override)}</span></div>
+    </div>
+  `).join('');
+}
+
+function renderCommissions(records) {
+  const list = document.getElementById('cm-list');
+  document.getElementById('cm-count').textContent = records.length + ' found';
+  if (!records.length) {
+    list.innerHTML = '<div class="empty-state"><div class="icon">📭</div>No unmatched commissions found</div>';
+    return;
+  }
+  list.innerHTML = records.map(r => `
+    <div class="record-card">
+      <div class="card-type">${r.source_company||'Commission'}</div>
+      <div class="card-name">${r.name_group_name||'—'}</div>
+      <div class="card-row"><span class="lbl">Effective Date</span><span class="val">${fmtDate(r.rate_effective_date)}</span></div>
+      <div class="card-row"><span class="lbl">Pay Date</span><span class="val">${fmtDate(r.due_date)}</span></div>
+      <div class="card-row"><span class="lbl">Payment Amount</span><span class="val amount">${fmtAmt(r.payment_amount)}</span></div>
+      <div class="card-row"><span class="lbl">Orig Commission</span><span class="val amount">—</span></div>
+      <div class="card-row"><span class="lbl">Monthly Renewal</span><span class="val amount">—</span></div>
+      <div class="card-row"><span class="lbl">Purchase Override</span><span class="val amount">—</span></div>
+    </div>
+  `).join('');
+}
+
+async function doSearch() {
+  const name = document.getElementById('searchInput').value.trim();
+  if (!name) { setStatus('Please enter a name to search.', true); return; }
+
+  setStatus('Searching…', false);
+  document.getElementById('tx-spinner').style.display = 'block';
+  document.getElementById('cm-spinner').style.display = 'block';
+  document.getElementById('tx-list').innerHTML = '';
+  document.getElementById('cm-list').innerHTML = '';
+  document.getElementById('tx-count').textContent = '';
+  document.getElementById('cm-count').textContent = '';
+
+  try {
+    const [txRecords, cmRecords] = await Promise.all([
+      searchTransactions(name),
+      searchCommissions(name)
+    ]);
+
+    document.getElementById('tx-spinner').style.display = 'none';
+    document.getElementById('cm-spinner').style.display = 'none';
+
+    renderTransactions(txRecords);
+    renderCommissions(cmRecords);
+    setStatus(`Found ${txRecords.length} transaction(s) and ${cmRecords.length} commission(s).`, false);
+
+  } catch(err) {
+    document.getElementById('tx-spinner').style.display = 'none';
+    document.getElementById('cm-spinner').style.display = 'none';
+    setStatus('Error: ' + err.message, true);
+  }
+}
+
+// Allow Enter key to trigger search
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+</script>
+</body>
+</html>
