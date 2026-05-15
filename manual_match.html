@@ -278,7 +278,8 @@ async function confirmMatch() {
         body: JSON.stringify({ commission_matched: true, commission_matched_date: today, matched_transaction_id: selectedTx.id })
       })
     ]);
-    if (!r1.ok || !r2.ok) throw new Error('Save failed');
+    if (!r1.ok) throw new Error('Transaction save failed: ' + await r1.text());
+    if (!r2.ok) throw new Error('Commission save failed: ' + await r2.text());
 
     // Grey out matched cards
     selectedTx.el.classList.add('matched-out');
