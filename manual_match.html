@@ -52,6 +52,24 @@ body { background: #d8eecb; font-family: Georgia, serif; padding: 20px 16px; min
 .empty-state .icon { font-size: 36px; margin-bottom: 10px; }
 
 .spinner { display: none; text-align: center; padding: 2rem; color: #888; font-family: Arial, sans-serif; font-size: 13px; }
+
+/* Selection */
+.record-card { cursor: pointer; }
+.record-card.selected-tx { border: 2px solid #2B4899 !important; background: #e8f0fd; box-shadow: 0 0 0 3px rgba(43,72,153,0.15); }
+.record-card.selected-cm { border: 2px solid #2e7d32 !important; background: #e8f5e9; box-shadow: 0 0 0 3px rgba(46,125,50,0.15); }
+.record-card.matched-out { opacity: 0.4; pointer-events: none; }
+
+/* Confirm bar */
+.confirm-bar { display: none; background: #1a1a2e; border-radius: 8px; padding: 14px 20px; margin-bottom: 16px; align-items: center; gap: 16px; font-family: Arial, sans-serif; }
+.confirm-bar.visible { display: flex; }
+.confirm-names { flex: 1; font-size: 13px; color: #fff; }
+.confirm-names .tx-name { color: #90caf9; font-weight: 600; }
+.confirm-names .cm-name { color: #a5d6a7; font-weight: 600; }
+.confirm-names .arrow { color: #aaa; margin: 0 8px; }
+.btn-confirm-match { background: #6DB33F; color: #fff; border: none; padding: 9px 22px; border-radius: 7px; font-size: 13px; font-family: Arial, sans-serif; font-weight: bold; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
+.btn-confirm-match:hover { background: #558b2f; }
+.btn-cancel-sel { background: transparent; color: #aaa; border: 1px solid #444; padding: 9px 16px; border-radius: 7px; font-size: 13px; font-family: Arial, sans-serif; cursor: pointer; white-space: nowrap; }
+.btn-cancel-sel:hover { background: #333; color: #fff; }
 </style>
 </head>
 <body>
@@ -76,6 +94,12 @@ body { background: #d8eecb; font-family: Georgia, serif; padding: 20px 16px; min
 
   <!-- Body -->
   <div class="body">
+    <!-- Confirm bar -->
+    <div class="confirm-bar" id="confirm-bar">
+      <div class="confirm-names" id="confirm-names"></div>
+      <button class="btn-confirm-match" onclick="confirmMatch()">✓ Confirm Match</button>
+      <button class="btn-cancel-sel" onclick="clearSelection()">✗ Cancel</button>
+    </div>
     <div class="columns">
 
       <!-- Transactions -->
@@ -164,18 +188,28 @@ function renderTransactions(records) {
     list.innerHTML = '<div class="empty-state"><div class="icon">📭</div>No unmatched transactions found</div>';
     return;
   }
-  list.innerHTML = records.map(r => `
-    <div class="record-card">
+  list.innerHTML = '';
+  records.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'record-card';
+    const name = (r.last_name||'') + (r.last_name && r.first_name ? ', ' : '') + (r.first_name||'');
+    div.innerHTML = `
       <div class="card-type">Transaction #${r.id}</div>
-      <div class="card-name">${(r.last_name||'')}${r.last_name && r.first_name ? ', ' : ''}${(r.first_name||'')}</div>
+      <div class="card-name">${name}</div>
       <div class="card-row"><span class="lbl">Company</span><span class="val">${r.company||'—'}</span></div>
       <div class="card-row"><span class="lbl">Effective Date</span><span class="val">${fmtDate(r.effective_date)}</span></div>
       <div class="card-row"><span class="lbl">Pay Date</span><span class="val">${calcPayDate(r.effective_date)}</span></div>
       <div class="card-row"><span class="lbl">Orig Commission</span><span class="val amount">${fmtAmt(r.orig_commission)}</span></div>
       <div class="card-row"><span class="lbl">Monthly Renewal</span><span class="val amount">${fmtAmt(r.monthly_renewal)}</span></div>
-      <div class="card-row"><span class="lbl">Purchase Override</span><span class="val amount">${fmtAmt(r.purchase_override)}</span></div>
-    </div>
-  `).join('');
+    `;
+    div.addEventListener('click', () => {
+      if (selectedTx) selectedTx.el.classList.remove('selected-tx');
+      selectedTx = { id: r.id, name, el: div };
+      div.classList.add('selected-tx');
+      updateConfirmBar();
+    });
+    list.appendChild(div);
+  });
 }
 
 function renderCommissions(records) {
@@ -185,17 +219,76 @@ function renderCommissions(records) {
     list.innerHTML = '<div class="empty-state"><div class="icon">📭</div>No unmatched commissions found</div>';
     return;
   }
-  list.innerHTML = records.map(r => `
-    <div class="record-card">
+  list.innerHTML = '';
+  records.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'record-card';
+    const name = r.name_group_name || '—';
+    div.innerHTML = `
       <div class="card-type">${r.source_company||'Commission'}</div>
-      <div class="card-name">${r.name_group_name||'—'}</div>
+      <div class="card-name">${name}</div>
       <div class="card-row"><span class="lbl">Effective Date</span><span class="val">${fmtDate(r.rate_effective_date)}</span></div>
       <div class="card-row"><span class="lbl">Payment Amount</span><span class="val amount">${fmtAmt(r.payment_amount)}</span></div>
-      <div class="card-row"><span class="lbl">Orig Commission</span><span class="val amount">—</span></div>
-      <div class="card-row"><span class="lbl">Monthly Renewal</span><span class="val amount">—</span></div>
-      <div class="card-row"><span class="lbl">Purchase Override</span><span class="val amount">—</span></div>
-    </div>
-  `).join('');
+    `;
+    div.addEventListener('click', () => {
+      if (selectedCm) selectedCm.el.classList.remove('selected-cm');
+      selectedCm = { id: r.id, name, el: div };
+      div.classList.add('selected-cm');
+      updateConfirmBar();
+    });
+    list.appendChild(div);
+  });
+}
+
+let selectedTx = null;  // { id, name, el }
+let selectedCm = null;  // { id, name, el }
+
+function clearSelection() {
+  if (selectedTx) { selectedTx.el.classList.remove('selected-tx'); selectedTx = null; }
+  if (selectedCm) { selectedCm.el.classList.remove('selected-cm'); selectedCm = null; }
+  document.getElementById('confirm-bar').classList.remove('visible');
+}
+
+function updateConfirmBar() {
+  if (selectedTx && selectedCm) {
+    document.getElementById('confirm-names').innerHTML =
+      `<span class="tx-name">${selectedTx.name}</span><span class="arrow">→</span><span class="cm-name">${selectedCm.name}</span>`;
+    document.getElementById('confirm-bar').classList.add('visible');
+  } else {
+    document.getElementById('confirm-bar').classList.remove('visible');
+  }
+}
+
+async function confirmMatch() {
+  if (!selectedTx || !selectedCm) return;
+  const btn = document.querySelector('.btn-confirm-match');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const today = new Date().toISOString().split('T')[0];
+  try {
+    const [r1, r2] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/transactions?id=eq.${selectedTx.id}`, {
+        method: 'PATCH',
+        headers: { ...HEADERS, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ commission_matched: true, commission_matched_date: today, matched_commission_id: selectedCm.id })
+      }),
+      fetch(`${SUPABASE_URL}/rest/v1/commissions?id=eq.${selectedCm.id}`, {
+        method: 'PATCH',
+        headers: { ...HEADERS, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ commission_matched: true, commission_matched_date: today, matched_transaction_id: selectedTx.id })
+      })
+    ]);
+    if (!r1.ok || !r2.ok) throw new Error('Save failed');
+
+    // Grey out matched cards
+    selectedTx.el.classList.add('matched-out');
+    selectedCm.el.classList.add('matched-out');
+    setStatus(`✓ Matched: ${selectedTx.name} ↔ ${selectedCm.name}`, false);
+    clearSelection();
+  } catch(err) {
+    setStatus('Error: ' + err.message, true);
+  }
+  btn.disabled = false; btn.textContent = '✓ Confirm Match';
 }
 
 async function doSearch() {
