@@ -265,17 +265,7 @@ function hideProgress() { document.getElementById('progress-wrap').style.display
 
 function looksSuspicious(row) {
   const name = (row['Name / Group Name'] || '').toString().trim();
-  const amt = (row['Payment Amount'] || '').toString().replace(/[$,]/g,'');
-
   if (!name) { row._flagReason = 'Name is blank'; return true; }
-  if (name.includes('_')) { row._flagReason = 'Name contains underscore'; return true; }
-  if (/^\d+$/.test(name)) { row._flagReason = 'Name is all digits'; return true; }
-  if (name.length < 2) { row._flagReason = 'Name too short'; return true; }
-  if (/^[^a-zA-Z]/.test(name)) { row._flagReason = 'Name starts with non-letter'; return true; }
-  const stripped = name.replace(/[,.\s\-']/g,'');
-  if (/\d/.test(stripped) && (stripped.match(/\d/g)||[]).length > 3) { row._flagReason = 'Name has too many digits'; return true; }
-  if (!amt || parseFloat(amt) === 0) { row._flagReason = 'Payment Amount is zero or blank: [' + amt + ']'; return true; }
-
   return false;
 }
 
@@ -342,7 +332,7 @@ async function processFile(file) {
           if (pct>0) debugLog+=`  → ${p.name}: ${score}/${p.detectKeys.length} (${Math.round(pct*100)}%)\n`;
           if (pct>=0.4) {
             detected={profile:p,confidence:pct};
-            rows=XLSX.utils.sheet_to_json(ws,{defval:'',range:r});
+            rows=XLSX.utils.sheet_to_json(ws,{defval:'',range:r,blankrows:false});
             headers=Object.keys(rows[0]||{});
             debugLog+=`  ✅ MATCHED ${p.name} at row ${r}\n`;
             break;
