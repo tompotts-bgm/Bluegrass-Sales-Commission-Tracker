@@ -332,7 +332,10 @@ async function processFile(file) {
           if (pct>0) debugLog+=`  → ${p.name}: ${score}/${p.detectKeys.length} (${Math.round(pct*100)}%)\n`;
           if (pct>=0.4) {
             detected={profile:p,confidence:pct};
-            rows=XLSX.utils.sheet_to_json(ws,{defval:'',range:r,blankrows:false});
+            // Build an explicit range starting from the header row to the last row
+            const fullRange = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+            fullRange.s.r = r; // start from header row
+            rows = XLSX.utils.sheet_to_json(ws, { defval:'', range: fullRange });
             headers=Object.keys(rows[0]||{});
             debugLog+=`  ✅ MATCHED ${p.name} at row ${r}\n`;
             break;
