@@ -212,8 +212,6 @@ const PROFILES = [
 const PENDING = ['UHC','Wellcare','Cigna','GTL'];
 
 let cleanData = [], quarantineData = [], discardedData = [], currentProfile = null;
-let masterData = [];
-try { masterData = JSON.parse(localStorage.getItem('commissionMaster') || '[]'); } catch(e) {}
 
 function applyTransform(value, transform) {
   if (!transform) return value;
@@ -383,10 +381,10 @@ async function processFile(file) {
       }
       document.getElementById('mapping-section').style.display='block';
 
-      const validRows = rows.filter(row => {
-        if (currentProfile.name==='Aetna') return (row['Customer Number']||'').toString().trim().length>0;
-        return Object.values(row).filter(v=>(v||'').toString().trim()).length>=2;
-      });
+      // All rows go through — nothing gets silently dropped
+      const validRows = currentProfile.name === 'Aetna'
+        ? rows.filter(row => (row['Customer Number']||'').toString().trim().length > 0)
+        : rows;
 
       cleanData=[]; const suspicious=[];
 
@@ -481,13 +479,11 @@ document.getElementById('btn-save').addEventListener('click',async()=>{
 });
 
 document.getElementById('btn-export').addEventListener('click',()=>{
-  const allData=[...masterData,...cleanData];
-  const wsData=[OUTPUT_COLS.concat(['Source Company']),...allData.map(r=>OUTPUT_COLS.map(c=>r[c]??'').concat([r['_source']||'']))];
+  const wsData=[OUTPUT_COLS.concat(['Source Company']),...cleanData.map(r=>OUTPUT_COLS.map(c=>r[c]??'').concat([r['_source']||'']))];
   const wb=XLSX.utils.book_new(); const ws=XLSX.utils.aoa_to_sheet(wsData);
   ws['!cols']=[18,14,24,18,10,14,16,16].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb,ws,'Commission Data'); XLSX.writeFile(wb,'commission_merged.xlsx');
-  masterData=allData; try{localStorage.setItem('commissionMaster',JSON.stringify(masterData));}catch(e){}
-  alert('Downloaded '+allData.length+' rows to Excel.');
+  alert('Downloaded '+cleanData.length+' rows to Excel.');
 });
 
 document.getElementById('btn-export-discarded').addEventListener('click',()=>{
@@ -534,12 +530,6 @@ PROFILES.forEach(p=>{
   div.innerHTML=`<span class="name" style="color:#999">${name}</span><span class="pending">⏳ Pending — spreadsheet needed</span>`;
   pl.appendChild(div);
 });
-if (masterData.length>0){
-  const note=document.createElement('p');
-  note.style.cssText='font-size:13px;color:#1565c0;background:#e3f2fd;padding:8px 12px;border-radius:6px;margin-bottom:1rem;';
-  note.textContent='💾 '+masterData.length+' rows stored from previous imports. Next export will include them.';
-  document.getElementById('drop-zone').insertAdjacentElement('beforebegin',note);
-}
 </script>
 </body>
 </html>
