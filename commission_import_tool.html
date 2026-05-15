@@ -38,7 +38,8 @@ p.sub { font-size: 13px; color: #666; margin-bottom: 1.5rem; }
 .progress-label { font-size: 12px; color: #888; margin-top: 4px; }
 #preview-section { display: none; margin-bottom: 1.25rem; }
 #preview-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; color: #333; }
-.table-wrap { overflow-x: auto; border: 1px solid #e0e0e0; border-radius: 8px; }
+.table-wrap { overflow-x: auto; overflow-y: auto; max-height: 400px; border: 1px solid #e0e0e0; border-radius: 8px; }
+    thead th { position: sticky; top: 0; z-index: 1; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th { background: #1a1a2e; color: #fff; padding: 9px 12px; text-align: left; font-weight: 600; white-space: nowrap; }
 td { padding: 8px 12px; border-bottom: 1px solid #eee; white-space: nowrap; }
@@ -412,8 +413,8 @@ async function processFile(file) {
       document.getElementById('s-status').innerHTML=suspicious.length>0?'<span class="badge badge-warning">Review needed</span>':'<span class="badge badge-success">All rows clean</span>';
 
       const tbody=document.getElementById('preview-body'); tbody.innerHTML='';
-      document.getElementById('preview-count').textContent=`(first ${Math.min(10,cleanData.length)} of ${cleanData.length} rows)`;
-      cleanData.slice(0,10).forEach(row=>{
+      document.getElementById('preview-count').textContent = `(${cleanData.length} rows)`;
+      cleanData.forEach(row=>{
         const tr=document.createElement('tr');
         const pay=parseFloat(row['Payment Amount']);
         if (!isNaN(pay)&&pay<0) tr.className='negative';
