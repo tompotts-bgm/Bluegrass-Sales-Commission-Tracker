@@ -412,17 +412,6 @@ async function processFile(file) {
         allMapped.push(mapped);
       });
 
-      // Sort by Name / Group Name then Due Date
-      allMapped.sort(function(a, b) {
-        const nameA = (a['Name / Group Name']||'').toString().toUpperCase();
-        const nameB = (b['Name / Group Name']||'').toString().toUpperCase();
-        if (nameA < nameB) return -1;
-        if (nameA > nameB) return 1;
-        const dateA = new Date(a['Due Date']||'');
-        const dateB = new Date(b['Due Date']||'');
-        return (isNaN(dateA)?0:dateA) - (isNaN(dateB)?0:dateB);
-      });
-
       allMapped.forEach(mapped => {
         if (looksSuspicious(mapped)) suspicious.push(mapped); else cleanData.push(mapped);
       });
