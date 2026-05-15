@@ -141,7 +141,7 @@ function setStatus(msg, isError) {
 
 async function searchTransactions(name) {
   const q = encodeURIComponent(`%${name}%`);
-  const url = `${SUPABASE_URL}/rest/v1/transactions?commission_matched=is.false&last_name=ilike.${q}&select=id,first_name,last_name,company,effective_date,orig_commission,monthly_renewal,purchase_override`;
+  const url = `${SUPABASE_URL}/rest/v1/transactions?commission_matched=is.false&last_name=ilike.${q}&select=id,first_name,last_name,company,effective_date,orig_commission,monthly_renewal`;
   const resp = await fetch(url, { headers: HEADERS });
   if (!resp.ok) throw new Error('Transactions ' + resp.status + ': ' + await resp.text());
   return await resp.json();
@@ -225,6 +225,7 @@ async function doSearch() {
     document.getElementById('tx-spinner').style.display = 'none';
     document.getElementById('cm-spinner').style.display = 'none';
     setStatus('Error: ' + err.message, true);
+    document.getElementById('tx-list').innerHTML = '<div class="empty-state" style="color:#c0392b">' + err.message + '</div>';
   }
 }
 
