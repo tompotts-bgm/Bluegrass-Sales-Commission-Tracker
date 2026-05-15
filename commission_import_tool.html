@@ -268,23 +268,14 @@ function looksSuspicious(row) {
   const name = (row['Name / Group Name'] || '').toString().trim();
   const amt = (row['Payment Amount'] || '').toString().replace(/[$,]/g,'');
 
-  // Name checks — only flag truly bad names
-  if (!name) return true;
-  if (name.includes('_')) return true;                          // underscores = identifier/code
-  if (/^\d+$/.test(name)) return true;                         // all digits
-  if (name.length < 2) return true;                            // too short
-  if (/^[^a-zA-Z]/.test(name)) return true;                   // starts with non-letter
-
-  // Allow names with suffixes (JR, SR, II, III, IV etc) and punctuation
-  // Only flag if name looks like a code/identifier (has digits mixed with letters in odd patterns)
-  const stripped = name.replace(/[,.\s\-']/g,'');              // remove common punctuation
-  if (/\d/.test(stripped) && !/^[A-Z]+\d+$/.test(stripped.toUpperCase())) {
-    // Has digits but not in a simple alphanumeric pattern — likely a code
-    if ((stripped.match(/\d/g)||[]).length > 3) return true;   // more than 3 digits = suspicious
-  }
-
-  // Amount checks
-  if (!amt || parseFloat(amt) === 0) return true;
+  if (!name) { row._flagReason = 'Name is blank'; return true; }
+  if (name.includes('_')) { row._flagReason = 'Name contains underscore'; return true; }
+  if (/^\d+$/.test(name)) { row._flagReason = 'Name is all digits'; return true; }
+  if (name.length < 2) { row._flagReason = 'Name too short'; return true; }
+  if (/^[^a-zA-Z]/.test(name)) { row._flagReason = 'Name starts with non-letter'; return true; }
+  const stripped = name.replace(/[,.\s\-']/g,'');
+  if (/\d/.test(stripped) && (stripped.match(/\d/g)||[]).length > 3) { row._flagReason = 'Name has too many digits'; return true; }
+  if (!amt || parseFloat(amt) === 0) { row._flagReason = 'Payment Amount is zero or blank: [' + amt + ']'; return true; }
 
   return false;
 }
@@ -305,7 +296,7 @@ async function askClaudeValidate(row, carrier) {
 
 function renderQuarantineCard(item, index) {
   const card = document.createElement('div'); card.className='q-card'; card.id=`q-card-${index}`;
-  card.innerHTML = `<div class="q-card-header"><span>⚠ Flagged Row #${index+1}</span><span class="badge badge-error" id="q-badge-${index}">Checking…</span><span class="ai-note" id="q-note-${index}">Claude is reviewing…</span></div><div class="q-card-body"><div class="q-side"><div class="side-label">Original</div>${OUTPUT_COLS.map(col=>`<div class="q-field"><span class="field-label">${col}:</span><span class="field-val bad">${item.raw[col]||'—'}</span></div>`).join('')}</div><div class="q-side" id="q-fixed-${index}"><div class="side-label">Claude's correction</div><div style="color:#aaa;font-style:italic;font-size:13px;padding-top:8px;">Waiting…</div></div><div class="q-actions" id="q-actions-${index}"><div class="ai-thinking">Asking Claude…</div></div></div>`;
+  card.innerHTML = `<div class="q-card-header"><span>⚠ Flagged Row #${index+1}</span><span class="badge badge-error" id="q-badge-${index}">Checking…</span><span class="ai-note" id="q-note-${index}">Reason: ${item.raw._flagReason || 'unknown'}</span></div><div class="q-card-body"><div class="q-side"><div class="side-label">Original</div>${OUTPUT_COLS.map(col=>`<div class="q-field"><span class="field-label">${col}:</span><span class="field-val bad">${item.raw[col]||'—'}</span></div>`).join('')}</div><div class="q-side" id="q-fixed-${index}"><div class="side-label">Claude's correction</div><div style="color:#aaa;font-style:italic;font-size:13px;padding-top:8px;">Waiting…</div></div><div class="q-actions" id="q-actions-${index}"><div class="ai-thinking">Asking Claude…</div></div></div>`;
   return card;
 }
 
