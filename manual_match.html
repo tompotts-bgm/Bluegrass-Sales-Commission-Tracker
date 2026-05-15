@@ -114,7 +114,13 @@ const HEADERS = {
   'Authorization': 'Bearer ' + SUPABASE_KEY
 };
 
-function fmtDate(d) {
+function calcPayDate(effectiveDate) {
+  if (!effectiveDate) return '—';
+  const d = new Date(effectiveDate);
+  if (isNaN(d)) return '—';
+  d.setUTCMonth(d.getUTCMonth() + 1);
+  return (d.getUTCMonth()+1) + '/' + d.getUTCDate() + '/' + d.getUTCFullYear();
+}
   if (!d) return '—';
   const dt = new Date(d);
   if (isNaN(dt)) return d;
@@ -135,7 +141,7 @@ function setStatus(msg, isError) {
 
 async function searchTransactions(name) {
   const q = encodeURIComponent(`%${name}%`);
-  const url = `${SUPABASE_URL}/rest/v1/transactions?select=id,first_name,last_name,company,effective_date,due_date,orig_commission,monthly_renewal,purchase_override&commission_matched=eq.false&last_name=ilike.${q}&order=last_name.asc,effective_date.asc`;
+  const url = `${SUPABASE_URL}/rest/v1/transactions?select=id,first_name,last_name,company,effective_date,orig_commission,monthly_renewal,purchase_override&commission_matched=is.false&last_name=ilike.${q}`;
   const resp = await fetch(url, { headers: HEADERS });
   if (!resp.ok) throw new Error('Transactions ' + resp.status + ': ' + await resp.text());
   return await resp.json();
@@ -143,7 +149,7 @@ async function searchTransactions(name) {
 
 async function searchCommissions(name) {
   const q = encodeURIComponent(`%${name}%`);
-  const url = `${SUPABASE_URL}/rest/v1/commissions?select=id,name_group_name,rate_effective_date,due_date,payment_amount,source_company&commission_matched=eq.false&name_group_name=ilike.${q}&order=name_group_name.asc,rate_effective_date.asc`;
+  const url = `${SUPABASE_URL}/rest/v1/commissions?select=id,name_group_name,rate_effective_date,due_date,payment_amount,source_company&commission_matched=is.false&name_group_name=ilike.${q}`;
   const resp = await fetch(url, { headers: HEADERS });
   if (!resp.ok) throw new Error('Commissions ' + resp.status + ': ' + await resp.text());
   return await resp.json();
@@ -162,7 +168,7 @@ function renderTransactions(records) {
       <div class="card-name">${(r.last_name||'')}${r.last_name && r.first_name ? ', ' : ''}${(r.first_name||'')}</div>
       <div class="card-row"><span class="lbl">Company</span><span class="val">${r.company||'—'}</span></div>
       <div class="card-row"><span class="lbl">Effective Date</span><span class="val">${fmtDate(r.effective_date)}</span></div>
-      <div class="card-row"><span class="lbl">Pay Date</span><span class="val">${fmtDate(r.due_date)}</span></div>
+      <div class="card-row"><span class="lbl">Pay Date</span><span class="val">${calcPayDate(r.effective_date)}</span></div>
       <div class="card-row"><span class="lbl">Orig Commission</span><span class="val amount">${fmtAmt(r.orig_commission)}</span></div>
       <div class="card-row"><span class="lbl">Monthly Renewal</span><span class="val amount">${fmtAmt(r.monthly_renewal)}</span></div>
       <div class="card-row"><span class="lbl">Purchase Override</span><span class="val amount">${fmtAmt(r.purchase_override)}</span></div>
