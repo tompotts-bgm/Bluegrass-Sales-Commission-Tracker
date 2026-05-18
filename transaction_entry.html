@@ -313,65 +313,40 @@
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
   const HEADERS = { 'Content-Type':'application/json', 'apikey':SUPABASE_KEY, 'Authorization':'Bearer '+SUPABASE_KEY, 'Prefer':'return=representation' };
 
-  // ── COMMISSION TABLE ──────────────────────────────────────────────
-  // monthlyOverride = the override column next to monthlyRenewal
-  const COMM_TABLE = {
-    2027: {
-      mapd: {
-        Humana:   { renewal:353, monthlyRenewal:29.41, monthlyOverride:5, purchaseOverride:125 },
-        Anthem:   { renewal:353, monthlyRenewal:29.41, monthlyOverride:5, purchaseOverride:125 },
-        UHC:      { renewal:353, monthlyRenewal:29.41, monthlyOverride:5, purchaseOverride:125 },
-        Wellcare: { renewal:353, monthlyRenewal:29.41, monthlyOverride:5, purchaseOverride:125 },
-        Aetna:    { renewal:353, monthlyRenewal:29.41, monthlyOverride:5, purchaseOverride:125 },
-        Cigna:    { renewal:0,   monthlyRenewal:0,     monthlyOverride:0, purchaseOverride:0 },
-      },
-      supp: { Humana:0.22, Anthem:0.22, Aetna:0.18, UHC:0.13, Cigna:0 }
-    },
-    2026: {
-      mapd: {
-        Humana:   { renewal:347, monthlyRenewal:28.91, monthlyOverride:5, purchaseOverride:125 },
-        Anthem:   { renewal:347, monthlyRenewal:28.91, monthlyOverride:5, purchaseOverride:125 },
-        UHC:      { renewal:347, monthlyRenewal:28.91, monthlyOverride:5, purchaseOverride:125 },
-        Wellcare: { renewal:347, monthlyRenewal:28.91, monthlyOverride:5, purchaseOverride:125 },
-        Aetna:    { renewal:347, monthlyRenewal:28.91, monthlyOverride:5, purchaseOverride:125 },
-        Cigna:    { renewal:0,   monthlyRenewal:0,     monthlyOverride:0, purchaseOverride:0 },
-      },
-      supp: { Humana:0.22, Anthem:0.22, Aetna:0.18, UHC:0.13, Cigna:0 }
-    },
-    2025: {
-      mapd: {
-        Humana:   { renewal:313, monthlyRenewal:26, monthlyOverride:5, purchaseOverride:125 },
-        Anthem:   { renewal:313, monthlyRenewal:26, monthlyOverride:5, purchaseOverride:125 },
-        UHC:      { renewal:313, monthlyRenewal:26, monthlyOverride:5, purchaseOverride:125 },
-        Wellcare: { renewal:313, monthlyRenewal:26, monthlyOverride:5, purchaseOverride:125 },
-        Aetna:    { renewal:313, monthlyRenewal:26, monthlyOverride:5, purchaseOverride:125 },
-        Cigna:    { renewal:0,   monthlyRenewal:0,  monthlyOverride:0, purchaseOverride:0 },
-      },
-      supp: { Humana:0.22, Anthem:0.22, Aetna:0.18, UHC:0.13, Cigna:0 }
-    },
-    2024: {
-      mapd: {
-        Humana:   { renewal:306, monthlyRenewal:25.5, monthlyOverride:3, purchaseOverride:125 },
-        Anthem:   { renewal:306, monthlyRenewal:25.5, monthlyOverride:3, purchaseOverride:125 },
-        UHC:      { renewal:306, monthlyRenewal:25.5, monthlyOverride:3, purchaseOverride:125 },
-        Wellcare: { renewal:306, monthlyRenewal:25.5, monthlyOverride:3, purchaseOverride:125 },
-        Aetna:    { renewal:306, monthlyRenewal:25.5, monthlyOverride:3, purchaseOverride:125 },
-        Cigna:    { renewal:0,   monthlyRenewal:0,    monthlyOverride:0, purchaseOverride:0 },
-      },
-      supp: { Humana:0.22, Anthem:0.22, Aetna:0.18, UHC:0.13, Cigna:0, Medico:0 }
-    },
-    2023: {
-      mapd: {
-        Humana:   { renewal:301, monthlyRenewal:25.08, monthlyOverride:0, purchaseOverride:125 },
-        Anthem:   { renewal:301, monthlyRenewal:25.08, monthlyOverride:0, purchaseOverride:125 },
-        UHC:      { renewal:301, monthlyRenewal:25.08, monthlyOverride:0, purchaseOverride:125 },
-        Wellcare: { renewal:301, monthlyRenewal:25.08, monthlyOverride:0, purchaseOverride:125 },
-        Aetna:    { renewal:301, monthlyRenewal:25.08, monthlyOverride:0, purchaseOverride:125 },
-        Cigna:    { renewal:0,   monthlyRenewal:0,     monthlyOverride:0, purchaseOverride:0 },
-      },
-      supp: { Humana:0.22, Anthem:0.22, Aetna:0.18, UHC:0.13, Cigna:0, Medico:0 }
+  // ── COMMISSION RATES — fetched from Supabase ─────────────────────
+  let COMM_TABLE = {}; // populated on load
+
+  async function loadCommissionRates() {
+    try {
+      const resp = await fetch(
+        `${SUPABASE_URL}/rest/v1/commission_rates?select=*&order=year.desc,carrier.asc`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
+      );
+      if (!resp.ok) throw new Error('Failed to load commission rates');
+      const rows = await resp.json();
+      console.log('[CommRates] Loaded', rows.length, 'rows from Supabase:', rows);
+
+      // Build COMM_TABLE structure: { year: { mapd: { Carrier: {...} }, supp: { Carrier: rate } } }
+      rows.forEach(r => {
+        if (!COMM_TABLE[r.year]) COMM_TABLE[r.year] = { mapd: {}, supp: {} };
+        if (r.product_type === 'MSUP') {
+          COMM_TABLE[r.year].supp[r.carrier] = parseFloat(r.supplement_rate) || 0;
+        } else {
+          COMM_TABLE[r.year].mapd[r.carrier] = {
+            newToMedicare:   parseFloat(r.new_to_medicare)  || 0,
+            renewal:         parseFloat(r.renewal)          || 0,
+            renewalOverride: parseFloat(r.renewal_override) || 0,
+            monthlyRenewal:  parseFloat(r.monthly_renewal)  || 0,
+            monthlyOverride: parseFloat(r.monthly_override) || 0,
+            purchaseOverride:parseFloat(r.purchase_override)|| 0,
+          };
+        }
+      });
+    } catch(e) {
+      console.error('Commission rates load failed:', e.message);
     }
-  };
+    console.log('[CommRates] COMM_TABLE built:', JSON.stringify(COMM_TABLE, null, 2));
+  }
 
   // ── STATE ─────────────────────────────────────────────────────────
   let selectedClientId = null;
@@ -380,7 +355,8 @@
   let origCommissionManual = false; // true when user typed a manual override
 
   // ── INIT ──────────────────────────────────────────────────────────
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
+    await loadCommissionRates();
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('dateWritten').value = today;
     const nd = new Date(); nd.setMonth(nd.getMonth()+1); nd.setDate(1);
@@ -520,7 +496,7 @@
     const carrierData = yearData.mapd[company];
     if (!carrierData) return { type:'mapd', error:`No MAPD data for ${company} in ${effYear}.` };
 
-    const { renewal, monthlyRenewal, monthlyOverride, purchaseOverride } = carrierData;
+    const { newToMedicare, renewal, renewalOverride, monthlyRenewal, monthlyOverride, purchaseOverride } = carrierData;
     const prorated = proratedMonths(effDate);
 
     let origCommission, origNote, renewalStartYear;
@@ -565,7 +541,7 @@
     return {
       type:'mapd', company, effDate, effYear,
       epVal, isNewMed, prorated,
-      renewal, monthlyRenewal, monthlyOverride, purchaseOverride,
+      renewal, renewalOverride, monthlyRenewal, monthlyOverride, purchaseOverride,
       origCommission, displayOrig, origNote, renewalStartYear,
       records:[
         { label:'Originating Commission', type:'originating', date:effDate, orig_commission:displayOrig, amount:displayOrig, monthly_renewal:null, note:origNote },
@@ -672,14 +648,17 @@
 
     // ── MAPD ─────────────────────────────────────────────────────
     if (result.type === 'mapd') {
-      const renewalTotal   = result.monthlyRenewal * 12;
-      const overrideTotal  = result.monthlyOverride * 12;
-      const grandTotal     = result.displayOrig + renewalTotal + overrideTotal;
-      const totalRecords   = 1 + result.renewalRecords.length + result.overrideRecords.length;
+      const renewalTotal         = result.monthlyRenewal  * 12;
+      const overrideMonthlyTotal = result.monthlyOverride * 12;
+      const purchaseOverride     = result.purchaseOverride || 0;
+      const grandTotal           = result.displayOrig + renewalTotal + purchaseOverride + overrideMonthlyTotal;
+      const hasOverrides         = result.monthlyOverride > 0 || purchaseOverride > 0;
+      // 1 originating + 12 renewals + 1 override originating + 12 override monthly = 26
+      const totalRecords         = 1 + result.renewalRecords.length + (hasOverrides ? 1 + result.overrideRecords.length : 0);
 
-      // Originating
+      // ── Record 1: Originating Commission ─────────────────────
       html += `
-        <div class="rec-group-label">Originating Commission (1 record)</div>
+        <div class="rec-group-label">Record 1 of ${totalRecords} — Originating Commission</div>
         <div class="rec-card">
           <div class="rec-card-header">
             <span class="rec-card-type">Originating</span>
@@ -689,14 +668,26 @@
           <div class="rec-card-row"><span class="rck">New to Medicare</span><span class="rcv">${result.isNewMed?'Yes':'No'}</span></div>
           <div class="rec-card-row"><span class="rck">Prorated Months</span><span class="rcv">${result.prorated}</span></div>
           <div class="rec-card-row"><span class="rck">Calculation</span><span class="rcv" style="font-size:10px;max-width:140px;text-align:right;line-height:1.4;">${result.origNote}</span></div>
+          <div class="rec-card-row" style="margin-top:5px;padding-top:5px;border-top:1px dashed #ddd;">
+            <span class="rck" style="color:#888;font-size:11px;">orig_commission</span><span class="rcv" style="color:#1a6b2a;font-weight:600;">$${result.displayOrig.toFixed(2)}</span>
+          </div>
+          <div class="rec-card-row"><span class="rck" style="color:#888;font-size:11px;">monthly_renewal</span><span class="rcv" style="color:#bbb;font-size:11px;">null</span></div>
+          <div class="rec-card-row"><span class="rck" style="color:#888;font-size:11px;">purchase_override</span><span class="rcv" style="color:#bbb;font-size:11px;">null</span></div>
+          <div class="rec-card-row"><span class="rck" style="color:#888;font-size:11px;">monthly_override</span><span class="rcv" style="color:#bbb;font-size:11px;">null</span></div>
         </div>`;
 
-      // Renewals
-      html += `<div class="rec-group-label">Monthly Renewals (12 records — Jan–Dec ${result.renewalStartYear})</div>
+      // ── Records 2–13: Monthly Renewals ────────────────────────
+      html += `<div class="rec-group-label">Records 2–13 of ${totalRecords} — Monthly Renewals (Jan–Dec ${result.renewalStartYear})</div>
         <div class="rec-card">
           <div class="rec-card-header">
             <span class="rec-card-type">Renewal × 12</span>
             <span class="rec-card-amount">$${renewalTotal.toFixed(2)}</span>
+          </div>
+          <div class="rec-card-row" style="margin-bottom:4px;">
+            <span class="rck" style="color:#888;font-size:11px;">orig_commission</span><span class="rcv" style="color:#bbb;font-size:11px;">null</span>
+          </div>
+          <div class="rec-card-row" style="margin-bottom:6px;">
+            <span class="rck" style="color:#888;font-size:11px;">monthly_renewal</span><span class="rcv" style="color:#1a6b2a;font-weight:600;">$${result.monthlyRenewal.toFixed(2)} each</span>
           </div>
           <div class="renewal-list">`;
       result.renewalRecords.forEach(r => {
@@ -704,32 +695,59 @@
       });
       html += `</div></div>`;
 
-      // Overrides
-      if (result.overrideRecords.length > 0) {
-        html += `<div class="rec-group-label">Monthly Overrides (12 records — Jan–Dec ${result.renewalStartYear})</div>
+      // ── Override records ──────────────────────────────────────
+      if (hasOverrides) {
+        // Record 14: Override Originating
+        html += `<div class="rec-group-label">Record 14 of ${totalRecords} — Override Originating</div>
           <div class="rec-card" style="border-color:#6DB33F;">
             <div class="rec-card-header">
-              <span class="rec-card-type" style="color:#4a7c1f;">Override × 12</span>
-              <span class="rec-card-amount">$${overrideTotal.toFixed(2)}</span>
+              <span class="rec-card-type" style="color:#4a7c1f;">Override Originating</span>
+              <span class="rec-card-amount">$${purchaseOverride.toFixed(2)}</span>
             </div>
-            <div class="renewal-list">`;
-        result.overrideRecords.forEach(r => {
-          html += `<div class="renewal-list-item"><span class="rl-date">${r.date}</span><span class="rl-amt">$${r.amount.toFixed(2)}</span></div>`;
-        });
-        html += `</div></div>`;
+            <div class="rec-card-row"><span class="rck">Date</span><span class="rcv">${result.effDate}</span></div>
+            <div class="rec-card-row" style="margin-top:5px;padding-top:5px;border-top:1px dashed #ddd;">
+              <span class="rck" style="color:#888;font-size:11px;">orig_commission</span><span class="rcv" style="color:#bbb;font-size:11px;">null</span>
+            </div>
+            <div class="rec-card-row"><span class="rck" style="color:#888;font-size:11px;">monthly_renewal</span><span class="rcv" style="color:#bbb;font-size:11px;">null</span></div>
+            <div class="rec-card-row"><span class="rck" style="color:#888;font-size:11px;">purchase_override</span><span class="rcv" style="color:#1a6b2a;font-weight:600;">$${purchaseOverride.toFixed(2)}</span></div>
+            <div class="rec-card-row"><span class="rck" style="color:#888;font-size:11px;">monthly_override</span><span class="rcv" style="color:#bbb;font-size:11px;">null</span></div>
+          </div>`;
+
+        // Records 15–26: Monthly Overrides
+        if (result.overrideRecords.length > 0) {
+          html += `<div class="rec-group-label">Records 15–26 of ${totalRecords} — Monthly Overrides (Jan–Dec ${result.renewalStartYear})</div>
+            <div class="rec-card" style="border-color:#6DB33F;">
+              <div class="rec-card-header">
+                <span class="rec-card-type" style="color:#4a7c1f;">Override × 12</span>
+                <span class="rec-card-amount">$${overrideMonthlyTotal.toFixed(2)}</span>
+              </div>
+              <div class="rec-card-row" style="margin-bottom:4px;">
+                <span class="rck" style="color:#888;font-size:11px;">orig_commission</span><span class="rcv" style="color:#bbb;font-size:11px;">null</span>
+              </div>
+              <div class="rec-card-row" style="margin-bottom:6px;">
+                <span class="rck" style="color:#888;font-size:11px;">monthly_override</span><span class="rcv" style="color:#1a6b2a;font-weight:600;">$${result.monthlyOverride.toFixed(2)} each</span>
+              </div>
+              <div class="renewal-list">`;
+          result.overrideRecords.forEach(r => {
+            html += `<div class="renewal-list-item"><span class="rl-date">${r.date}</span><span class="rl-amt">$${r.amount.toFixed(2)}</span></div>`;
+          });
+          html += `</div></div>`;
+        }
       }
 
-      // Summary
+      // ── Summary ───────────────────────────────────────────────
       html += `
         <div class="rec-summary">
-          <div class="rec-summary-row"><span>Originating</span><span>$${result.displayOrig.toFixed(2)}</span></div>
-          <div class="rec-summary-row"><span>Renewals (${result.renewalStartYear})</span><span>$${renewalTotal.toFixed(2)}</span></div>`;
-      if (overrideTotal > 0) {
-        html += `<div class="rec-summary-row"><span>Overrides (${result.renewalStartYear})</span><span>$${overrideTotal.toFixed(2)}</span></div>`;
+          <div class="rec-summary-row"><span>Originating Commission</span><span>$${result.displayOrig.toFixed(2)}</span></div>
+          <div class="rec-summary-row"><span>Monthly Renewals × 12</span><span>$${renewalTotal.toFixed(2)}</span></div>`;
+      if (hasOverrides) {
+        html += `
+          <div class="rec-summary-row"><span>Override Originating</span><span>$${purchaseOverride.toFixed(2)}</span></div>
+          <div class="rec-summary-row"><span>Monthly Overrides × 12</span><span>$${overrideMonthlyTotal.toFixed(2)}</span></div>`;
       }
       html += `
           <div class="rec-summary-row total"><span>Total Est. Commission</span><span>$${grandTotal.toFixed(2)}</span></div>
-          <div class="rec-summary-row" style="font-size:11px;opacity:0.7;margin-top:4px;"><span>${totalRecords} transaction records</span></div>
+          <div class="rec-summary-row" style="font-size:11px;opacity:0.7;margin-top:4px;"><span>${totalRecords} records will be saved to Supabase</span></div>
         </div>`;
 
       body.innerHTML = html;
@@ -847,6 +865,7 @@
     if (!pt) { showStatus('Please select a Product Type.', true); return; }
 
     const result = calcCommissions();
+    console.log('[Save] calcCommissions result:', JSON.stringify(result, null, 2));
 
     const clientFirstName = document.getElementById('firstName').value || null;
     const clientLastName  = document.getElementById('lastName').value  || null;
@@ -855,13 +874,13 @@
     const clientState     = document.getElementById('cfState').value   || null;
     const clientZip       = document.getElementById('cfZip').value     || null;
 
-    const monthlyRenewalAmt = (result && !result.error && result.monthlyRenewal) ? result.monthlyRenewal : null;
-    const renewalStartDate  = (result && !result.error && result.renewalStartYear) ? `${result.renewalStartYear}-01-01` : null;
-    const origCommVal       = getOrigCommissionValue();
-
-    // Pull override values from rate table via calcCommissions result
-    const MONTHLY_OVERRIDE  = (result && !result.error && result.monthlyOverride  != null) ? result.monthlyOverride  : 5.00;
-    const PURCHASE_OVERRIDE = (result && !result.error && result.purchaseOverride != null) ? result.purchaseOverride : 125.00;
+    const monthlyRenewalAmt  = (result && !result.error && result.monthlyRenewal)  ? result.monthlyRenewal  : null;
+    const renewalStartDate   = (result && !result.error && result.renewalStartYear) ? `${result.renewalStartYear}-01-01` : null;
+    const origCommVal        = getOrigCommissionValue();
+    const MONTHLY_OVERRIDE   = (result && !result.error && result.monthlyOverride  != null) ? result.monthlyOverride  : 0;
+    const PURCHASE_OVERRIDE  = (result && !result.error && result.purchaseOverride != null) ? result.purchaseOverride : 0;
+    const RENEWAL_AMT        = (result && !result.error && result.renewal          != null) ? result.renewal          : 0;
+    const RENEWAL_OVERRIDE   = (result && !result.error && result.renewalOverride  != null) ? result.renewalOverride  : 0;
     const base = {
       client_id:               selectedClientId,
       first_name:              clientFirstName,
@@ -886,16 +905,16 @@
       commission_records:      result && !result.error ? result.records : [],
     };
 
-    // ── 1 originating row ──────────────────────────────────────
+    // ── 1 originating commission row ──────────────────────────
     const originatingRow = {
       ...base,
       orig_commission:   origCommVal,
       monthly_renewal:   null,
       monthly_override:  null,
-      purchase_override: PURCHASE_OVERRIDE,
+      purchase_override: null,
     };
 
-    // ── 12 renewal rows ────────────────────────────────────────
+    // ── 12 monthly renewal rows ────────────────────────────────
     const renewalRows = [];
     if (result && !result.error && result.renewalStartYear) {
       for (let m = 1; m <= 12; m++) {
@@ -911,7 +930,16 @@
       }
     }
 
-    // ── 12 override rows ───────────────────────────────────────
+    // ── 1 override originating row ─────────────────────────────
+    const overrideOriginatingRow = {
+      ...base,
+      orig_commission:   null,
+      monthly_renewal:   null,
+      monthly_override:  null,
+      purchase_override: PURCHASE_OVERRIDE,
+    };
+
+    // ── 12 monthly override rows ───────────────────────────────
     const overrideRows = [];
     if (result && !result.error && result.renewalStartYear) {
       for (let m = 1; m <= 12; m++) {
@@ -927,7 +955,9 @@
       }
     }
 
-    const allRows = [originatingRow, ...renewalRows, ...overrideRows];
+    const allRows = [originatingRow, ...renewalRows, overrideOriginatingRow, ...overrideRows];
+    console.log('[Save] allRows count:', allRows.length, 'renewalRows:', renewalRows.length, 'overrideRows:', overrideRows.length);
+    console.log('[Save] allRows:', JSON.stringify(allRows.map(r => ({ orig_commission: r.orig_commission, monthly_renewal: r.monthly_renewal, monthly_override: r.monthly_override, purchase_override: r.purchase_override, effective_date: r.effective_date })), null, 2));
 
     showStatus(`Saving ${allRows.length} records…`, false, true);
 
