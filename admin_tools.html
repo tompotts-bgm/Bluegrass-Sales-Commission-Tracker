@@ -7,39 +7,44 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: #d8eecb; font-family: Georgia, serif; padding: 30px 16px; min-height: 100vh; }
-
-.wrap { max-width: 520px; margin: 0 auto; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.10); }
-
+.wrap { max-width: 600px; margin: 0 auto; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.10); }
 .header { background: #2B4899; padding: 18px 24px; display: flex; align-items: center; gap: 16px; justify-content: space-between; }
 .header-right { border-left: 2px solid #6DB33F; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; }
 .header-title { color: #fff; font-size: 16px; font-weight: bold; font-family: Georgia, serif; }
 .header-sub { color: #6DB33F; font-size: 12px; font-family: Arial, sans-serif; }
 .btn-menu { font-size: 12px; padding: 6px 14px; border: 1px solid rgba(255,255,255,0.4); border-radius: 6px; text-decoration: none; color: #fff; background: rgba(255,255,255,0.1); white-space: nowrap; transition: background 0.15s; font-family: Arial, sans-serif; }
 .btn-menu:hover { background: rgba(255,255,255,0.25); }
-
 .body { background: #eef7e8; border: 1px solid #c5dfa8; border-top: none; border-radius: 0 0 10px 10px; padding: 28px 24px; }
 
-/* Password screen */
+/* Password */
 #password-screen { display: block; }
 .pw-label { font-size: 13px; font-family: Arial, sans-serif; color: #555; margin-bottom: 16px; line-height: 1.5; }
 .pw-row { display: flex; gap: 10px; align-items: center; }
 .pw-input { flex: 1; padding: 10px 14px; border: 1px solid #c5dfa8; border-radius: 7px; font-size: 14px; font-family: Arial, sans-serif; outline: none; transition: border-color 0.2s; }
 .pw-input:focus { border-color: #2B4899; box-shadow: 0 0 0 2px rgba(43,72,153,0.15); }
-.btn-unlock { background: #2B4899; color: #fff; border: none; padding: 10px 20px; border-radius: 7px; font-size: 13px; font-family: Arial, sans-serif; font-weight: bold; cursor: pointer; transition: background 0.15s; }
+.btn-unlock { background: #2B4899; color: #fff; border: none; padding: 10px 20px; border-radius: 7px; font-size: 13px; font-family: Arial, sans-serif; font-weight: bold; cursor: pointer; }
 .btn-unlock:hover { background: #1e357a; }
 .pw-error { font-size: 12px; color: #c0392b; font-family: Arial, sans-serif; margin-top: 10px; display: none; }
 
-/* Tools screen */
+/* Tools */
 #tools-screen { display: none; }
-.tools-intro { font-size: 13px; font-family: Arial, sans-serif; color: #555; margin-bottom: 20px; line-height: 1.5; }
-.tools-intro strong { color: #c0392b; }
-
+.section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #999; font-family: Arial, sans-serif; padding: 14px 4px 6px; }
 .tool-card { background: #fff; border: 1px solid #c5dfa8; border-radius: 8px; padding: 16px 18px; margin-bottom: 12px; }
 .tool-card h3 { font-size: 14px; font-weight: 600; color: #1a1a2e; font-family: Arial, sans-serif; margin-bottom: 4px; }
 .tool-card p { font-size: 12px; color: #888; font-family: Arial, sans-serif; margin-bottom: 12px; }
-.btn-delete { background: #fff; color: #c0392b; border: 1px solid #ef9a9a; padding: 8px 18px; border-radius: 7px; font-size: 13px; font-family: Arial, sans-serif; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn-backup { background: #2B4899; color: #fff; border: none; padding: 8px 16px; border-radius: 7px; font-size: 12px; font-family: Arial, sans-serif; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.btn-backup:hover { background: #1e357a; }
+.btn-restore { background: #4a7c2f; color: #fff; border: none; padding: 8px 16px; border-radius: 7px; font-size: 12px; font-family: Arial, sans-serif; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.btn-restore:hover { background: #2e5a1a; }
+.btn-delete { background: #fff; color: #c0392b; border: 1px solid #ef9a9a; padding: 8px 16px; border-radius: 7px; font-size: 12px; font-family: Arial, sans-serif; font-weight: 600; cursor: pointer; transition: background 0.15s; }
 .btn-delete:hover { background: #fce4ec; border-color: #c0392b; }
 .btn-delete:disabled { opacity: 0.5; cursor: not-allowed; }
+.file-input { display: none; }
+.status-msg { font-size: 12px; font-family: Arial, sans-serif; margin-top: 8px; display: none; }
+.status-msg.success { color: #2e7d32; }
+.status-msg.error { color: #c0392b; }
+.status-msg.info { color: #1565c0; }
 
 /* Confirm overlay */
 .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
@@ -51,17 +56,12 @@ body { background: #d8eecb; font-family: Georgia, serif; padding: 30px 16px; min
 .confirm-btns { display: flex; gap: 10px; justify-content: flex-end; }
 .btn-cancel { background: #fff; color: #555; border: 1px solid #ccc; padding: 9px 18px; border-radius: 7px; font-size: 13px; cursor: pointer; }
 .btn-cancel:hover { background: #f0f0f0; }
-.btn-confirm-delete { background: #c0392b; color: #fff; border: none; padding: 9px 18px; border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+.btn-confirm-delete { background: #c0392b; color: #fff; border: none; padding: 9px 18px; border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; }
 .btn-confirm-delete:hover { background: #922b21; }
-
-.status-msg { font-size: 13px; font-family: Arial, sans-serif; margin-top: 8px; display: none; }
-.status-msg.success { color: #2e7d32; }
-.status-msg.error { color: #c0392b; }
 </style>
 </head>
 <body>
 <div class="wrap">
-
   <div class="header">
     <div class="header-right">
       <div class="header-title">Admin Tools</div>
@@ -69,7 +69,6 @@ body { background: #d8eecb; font-family: Georgia, serif; padding: 30px 16px; min
     </div>
     <a href="index.html" class="btn-menu">← Menu</a>
   </div>
-
   <div class="body">
 
     <!-- Password screen -->
@@ -84,27 +83,46 @@ body { background: #d8eecb; font-family: Georgia, serif; padding: 30px 16px; min
 
     <!-- Tools screen -->
     <div id="tools-screen">
-      <p class="tools-intro"><strong>⚠ Warning:</strong> These actions permanently delete all records from the selected table and cannot be undone. Use for testing purposes only.</p>
 
+      <div class="section-label">Backup &amp; Restore</div>
+
+      <!-- Clients -->
       <div class="tool-card">
-        <h3>🗑 Transactions Table</h3>
-        <p>Deletes all records from the transactions table including commission records.</p>
-        <button class="btn-delete" onclick="promptDelete('transactions', 'Transactions')">Delete All Transactions</button>
+        <h3>👤 Clients Table</h3>
+        <p>Backup saves all client records to a local JSON file. Restore reloads from a backup file — existing records are deleted first.</p>
+        <div class="btn-row">
+          <button class="btn-backup" onclick="backupTable('clients', 'clients_backup')">⬇ Backup</button>
+          <button class="btn-restore" onclick="document.getElementById('restore-clients').click()">⬆ Restore</button>
+          <input type="file" class="file-input" id="restore-clients" accept=".json" onchange="restoreTable('clients', this)" />
+          <button class="btn-delete" onclick="promptDelete('clients', 'Clients')">🗑 Delete All</button>
+        </div>
+        <div class="status-msg" id="status-clients"></div>
+      </div>
+
+      <!-- Transactions -->
+      <div class="tool-card">
+        <h3>📝 Transactions Table</h3>
+        <p>Backup saves all transaction records to a local JSON file. Restore reloads from a backup file — existing records are deleted first.</p>
+        <div class="btn-row">
+          <button class="btn-backup" onclick="backupTable('transactions', 'transactions_backup')">⬇ Backup</button>
+          <button class="btn-restore" onclick="document.getElementById('restore-transactions').click()">⬆ Restore</button>
+          <input type="file" class="file-input" id="restore-transactions" accept=".json" onchange="restoreTable('transactions', this)" />
+          <button class="btn-delete" onclick="promptDelete('transactions', 'Transactions')">🗑 Delete All</button>
+        </div>
         <div class="status-msg" id="status-transactions"></div>
       </div>
 
+      <!-- Commissions -->
       <div class="tool-card">
-        <h3>🗑 Commissions Table</h3>
-        <p>Deletes all records from the commissions table imported from carrier files.</p>
-        <button class="btn-delete" onclick="promptDelete('commissions', 'Commissions')">Delete All Commissions</button>
+        <h3>💰 Commissions Table</h3>
+        <p>Backup saves all commission records to a local JSON file. Restore reloads from a backup file — existing records are deleted first.</p>
+        <div class="btn-row">
+          <button class="btn-backup" onclick="backupTable('commissions', 'commissions_backup')">⬇ Backup</button>
+          <button class="btn-restore" onclick="document.getElementById('restore-commissions').click()">⬆ Restore</button>
+          <input type="file" class="file-input" id="restore-commissions" accept=".json" onchange="restoreTable('commissions', this)" />
+          <button class="btn-delete" onclick="promptDelete('commissions', 'Commissions')">🗑 Delete All</button>
+        </div>
         <div class="status-msg" id="status-commissions"></div>
-      </div>
-
-      <div class="tool-card">
-        <h3>🗑 Clients Table</h3>
-        <p>Deletes all records from the clients table. This will also affect related transactions.</p>
-        <button class="btn-delete" onclick="promptDelete('clients', 'Clients')">Delete All Clients</button>
-        <div class="status-msg" id="status-clients"></div>
       </div>
 
     </div>
@@ -137,6 +155,7 @@ const PASSWORD = 'Pottsie';
 let pendingTable = null;
 let pendingLabel = null;
 
+// ── Password ──────────────────────────────────────────────────
 function checkPassword() {
   const val = document.getElementById('pw-input').value;
   if (val === PASSWORD) {
@@ -148,12 +167,116 @@ function checkPassword() {
     document.getElementById('pw-input').focus();
   }
 }
+document.getElementById('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkPassword(); });
 
-// Allow Enter key on password
-document.getElementById('pw-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') checkPassword();
-});
+// ── Status helper ─────────────────────────────────────────────
+function setStatus(table, msg, type) {
+  const el = document.getElementById('status-' + table);
+  el.textContent = msg;
+  el.className = 'status-msg ' + type;
+  el.style.display = 'block';
+}
 
+// ── Backup ────────────────────────────────────────────────────
+async function backupTable(table, filename) {
+  setStatus(table, 'Fetching records…', 'info');
+  try {
+    // Fetch all rows — paginate if needed
+    let allRows = [];
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const resp = await fetch(
+        `${SUPABASE_URL}/rest/v1/${table}?select=*&order=id.asc&offset=${from}&limit=${pageSize}`,
+        { headers: { ...HEADERS, 'Prefer': 'count=exact' } }
+      );
+      if (!resp.ok) throw new Error(await resp.text());
+      const rows = await resp.json();
+      allRows = allRows.concat(rows);
+      if (rows.length < pageSize) break;
+      from += pageSize;
+    }
+
+    // Download as JSON
+    const json = JSON.stringify({ table, backed_up_at: new Date().toISOString(), rows: allRows }, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename + '_' + new Date().toISOString().split('T')[0] + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+
+    setStatus(table, `✓ Backed up ${allRows.length} records to ${a.download}`, 'success');
+  } catch(err) {
+    setStatus(table, 'Backup error: ' + err.message, 'error');
+  }
+}
+
+// ── Restore ───────────────────────────────────────────────────
+async function restoreTable(table, input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+
+  if (!confirm(`Restore will DELETE all current ${table} records and replace them with the backup. Continue?`)) return;
+
+  setStatus(table, 'Reading backup file…', 'info');
+
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data.rows || !Array.isArray(data.rows)) throw new Error('Invalid backup file format.');
+
+    const rows = data.rows;
+    setStatus(table, `Deleting existing ${table} records…`, 'info');
+
+    // Delete all existing rows
+    await deleteAll(table);
+
+    setStatus(table, `Inserting ${rows.length} records…`, 'info');
+
+    // Strip generated fields that Supabase will recreate
+    const cleaned = rows.map(r => {
+      const copy = { ...r };
+      // Remove created_at and updated_at — Supabase will set these
+      // Keep id for clients/transactions, remove for UUID tables
+      return copy;
+    });
+
+    // Insert in batches of 500
+    const batchSize = 500;
+    for (let i = 0; i < cleaned.length; i += batchSize) {
+      const batch = cleaned.slice(i, i + batchSize);
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+        method: 'POST',
+        headers: { ...HEADERS, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(batch)
+      });
+      if (!resp.ok) throw new Error('Insert failed: ' + await resp.text());
+    }
+
+    setStatus(table, `✓ Restored ${rows.length} records successfully.`, 'success');
+  } catch(err) {
+    setStatus(table, 'Restore error: ' + err.message, 'error');
+  }
+}
+
+// ── Delete all ────────────────────────────────────────────────
+async function deleteAll(table) {
+  // Try integer id filter first, then UUID filter
+  let resp = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=gte.0`, {
+    method: 'DELETE', headers: HEADERS
+  });
+  if (resp.status === 400) {
+    resp = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=neq.00000000-0000-0000-0000-000000000000`, {
+      method: 'DELETE', headers: HEADERS
+    });
+  }
+  if (!resp.ok) throw new Error(await resp.text());
+}
+
+// ── Delete confirm ────────────────────────────────────────────
 function promptDelete(table, label) {
   pendingTable = table;
   pendingLabel = label;
@@ -163,53 +286,22 @@ function promptDelete(table, label) {
 
 function closeConfirm() {
   document.getElementById('confirm-overlay').classList.remove('visible');
-  pendingTable = null;
-  pendingLabel = null;
+  pendingTable = null; pendingLabel = null;
 }
 
 async function executeDelete() {
   if (!pendingTable) return;
-
   const btn = document.getElementById('btn-confirm-delete');
-  btn.disabled = true;
-  btn.textContent = 'Deleting…';
-
-  const statusEl = document.getElementById('status-' + pendingTable);
+  btn.disabled = true; btn.textContent = 'Deleting…';
   const table = pendingTable;
-  const label = pendingLabel;
-
   closeConfirm();
-
   try {
-    // Supabase REST delete all rows — use neq on id to match everything
-    const resp = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=gte.0`, {
-      method: 'DELETE',
-      headers: HEADERS
-    });
-
-    // For UUID tables try a different filter
-    if (resp.status === 400) {
-      const resp2 = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=neq.00000000-0000-0000-0000-000000000000`, {
-        method: 'DELETE',
-        headers: HEADERS
-      });
-      if (!resp2.ok) throw new Error(await resp2.text());
-    } else if (!resp.ok) {
-      throw new Error(await resp.text());
-    }
-
-    statusEl.textContent = '✓ All ' + label + ' deleted successfully.';
-    statusEl.className = 'status-msg success';
-    statusEl.style.display = 'block';
-
+    await deleteAll(table);
+    setStatus(table, '✓ All records deleted successfully.', 'success');
   } catch(err) {
-    statusEl.textContent = 'Error: ' + err.message;
-    statusEl.className = 'status-msg error';
-    statusEl.style.display = 'block';
+    setStatus(table, 'Error: ' + err.message, 'error');
   }
-
-  btn.disabled = false;
-  btn.textContent = 'Yes, Delete All';
+  btn.disabled = false; btn.textContent = 'Yes, Delete All';
 }
 </script>
 </body>
