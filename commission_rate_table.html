@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Commission Rate Table</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #d8eecb; font-family: Georgia, serif; padding: 20px 16px; min-height: 100vh; }
+.wrap { max-width: 1100px; margin: 0 auto; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.10); }
+
+.header { background: #2B4899; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+.header-right { border-left: 2px solid #6DB33F; padding-left: 16px; }
+.header-title { color: #fff; font-size: 16px; font-weight: bold; font-family: Georgia, serif; }
+.header-sub { color: #6DB33F; font-size: 12px; font-family: Arial, sans-serif; margin-top: 3px; }
+.btn-menu { font-size: 12px; padding: 6px 14px; border: 1px solid rgba(255,255,255,0.4); border-radius: 6px; text-decoration: none; color: #fff; background: rgba(255,255,255,0.1); white-space: nowrap; font-family: Arial, sans-serif; }
+.btn-menu:hover { background: rgba(255,255,255,0.25); }
+
+.body { background: #eef7e8; border: 1px solid #c5dfa8; border-top: none; border-radius: 0 0 10px 10px; padding: 24px; }
+
+/* Password */
+#password-screen { display: block; }
+.pw-label { font-size: 13px; font-family: Arial, sans-serif; color: #555; margin-bottom: 16px; }
+.pw-row { display: flex; gap: 10px; align-items: center; max-width: 380px; }
+.pw-input { flex: 1; padding: 10px 14px; border: 1px solid #c5dfa8; border-radius: 7px; font-size: 14px; font-family: Arial, sans-serif; outline: none; }
+.pw-input:focus { border-color: #2B4899; box-shadow: 0 0 0 2px rgba(43,72,153,0.15); }
+.btn-unlock { background: #2B4899; color: #fff; border: none; padding: 10px 20px; border-radius: 7px; font-size: 13px; font-family: Arial, sans-serif; font-weight: bold; cursor: pointer; }
+.btn-unlock:hover { background: #1e357a; }
+.pw-error { font-size: 12px; color: #c0392b; font-family: Arial, sans-serif; margin-top: 8px; display: none; }
+
+/* Main screen */
+#main-screen { display: none; }
+
+.toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.toolbar label { font-size: 13px; font-family: Arial, sans-serif; color: #555; font-weight: 600; }
+.year-select { padding: 8px 12px; border: 1px solid #c5dfa8; border-radius: 7px; font-size: 13px; font-family: Arial, sans-serif; outline: none; }
+.year-select:focus { border-color: #2B4899; }
+.btn { font-size: 13px; padding: 8px 18px; border-radius: 7px; border: 1px solid #ccc; background: #fff; color: #333; cursor: pointer; font-family: Arial, sans-serif; font-weight: 500; transition: background 0.1s; }
+.btn:hover { background: #f0f0f0; }
+.btn.primary { background: #2B4899; color: #fff; border-color: #2B4899; }
+.btn.primary:hover { background: #1e357a; }
+.btn.green { background: #4a7c2f; color: #fff; border-color: #4a7c2f; }
+.btn.green:hover { background: #2e5a1a; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+#status-msg { font-size: 13px; font-family: Arial, sans-serif; margin-left: auto; }
+#status-msg.success { color: #2e7d32; }
+#status-msg.error { color: #c0392b; }
+#status-msg.info { color: #1565c0; }
+
+/* Section label */
+.section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #888; font-family: Arial, sans-serif; margin-bottom: 8px; margin-top: 20px; }
+
+/* Grid */
+.grid-wrap { overflow-x: auto; border: 1px solid #c5dfa8; border-radius: 8px; margin-bottom: 8px; }
+table { width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 13px; }
+thead th { background: #2B4899; color: #fff; padding: 9px 10px; text-align: center; font-size: 11px; font-weight: 600; white-space: nowrap; }
+thead th:first-child { text-align: left; min-width: 100px; }
+tbody tr:nth-child(even) td { background: #f5faf2; }
+tbody tr:hover td { background: #e8f4fd; }
+td { padding: 6px 8px; border-bottom: 1px solid #eee; text-align: center; }
+td:first-child { text-align: left; font-weight: 600; color: #1a1a2e; padding-left: 14px; }
+tbody tr:last-child td { border-bottom: none; }
+
+/* Editable inputs */
+.rate-input { width: 80px; padding: 5px 7px; border: 1px solid #c5dfa8; border-radius: 5px; font-size: 13px; font-family: Arial, sans-serif; text-align: right; outline: none; background: #fff; transition: border-color 0.15s; }
+.rate-input:focus { border-color: #2B4899; box-shadow: 0 0 0 2px rgba(43,72,153,0.12); }
+.rate-input.pct { width: 70px; }
+
+/* New year modal */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; }
+.overlay.visible { display: flex; }
+.modal { background: #fff; border-radius: 12px; padding: 28px; max-width: 360px; width: 90%; box-shadow: 0 4px 24px rgba(0,0,0,0.18); font-family: Arial, sans-serif; }
+.modal h3 { font-size: 15px; font-weight: 700; color: #2B4899; margin-bottom: 10px; }
+.modal p { font-size: 13px; color: #666; margin-bottom: 16px; line-height: 1.5; }
+.modal input { width: 100%; padding: 9px 12px; border: 1px solid #c5dfa8; border-radius: 7px; font-size: 14px; font-family: Arial, sans-serif; outline: none; margin-bottom: 16px; }
+.modal input:focus { border-color: #2B4899; }
+.modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+.btn-cancel { background: #fff; color: #555; border: 1px solid #ccc; padding: 8px 16px; border-radius: 7px; font-size: 13px; cursor: pointer; }
+.btn-cancel:hover { background: #f0f0f0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="header-right">
+      <div class="header-title">Commission Rate Table</div>
+      <div class="header-sub">Edit rates by year and carrier — password protected</div>
+    </div>
+    <a href="index.html" class="btn-menu">← Menu</a>
+  </div>
+  <div class="body">
+
+    <!-- Password screen -->
+    <div id="password-screen">
+      <p class="pw-label">Enter the admin password to access the rate table editor.</p>
+      <div class="pw-row">
+        <input type="password" id="pw-input" class="pw-input" placeholder="Enter password…" />
+        <button class="btn-unlock" onclick="checkPassword()">Unlock</button>
+      </div>
+      <div class="pw-error" id="pw-error">Incorrect password. Please try again.</div>
+    </div>
+
+    <!-- Main screen -->
+    <div id="main-screen">
+
+      <div class="toolbar">
+        <label>Year:</label>
+        <select class="year-select" id="year-select" onchange="loadYear()">
+          <option value="">— Select Year —</option>
+        </select>
+        <button class="btn primary" id="btn-save" onclick="saveRates()" disabled>💾 Save Changes</button>
+        <button class="btn green" onclick="showNewYearModal()">＋ Add New Year</button>
+        <span id="status-msg"></span>
+      </div>
+
+      <!-- MAPD grid -->
+      <div id="mapd-section" style="display:none">
+        <div class="section-label">MAPD Rates</div>
+        <div class="grid-wrap">
+          <table id="mapd-table">
+            <thead>
+              <tr>
+                <th>Carrier</th>
+                <th>New to Medicare</th>
+                <th>Purchase Override</th>
+                <th>Renewal</th>
+                <th>Renewal Override</th>
+                <th>Monthly Renewal</th>
+                <th>Monthly Override</th>
+              </tr>
+            </thead>
+            <tbody id="mapd-body"></tbody>
+          </table>
+        </div>
+
+        <!-- Supplement rates -->
+        <div class="section-label">Supplement Rates (% of premium)</div>
+        <div class="grid-wrap">
+          <table id="supp-table">
+            <thead>
+              <tr>
+                <th>Carrier</th>
+                <th>Rate (%)</th>
+              </tr>
+            </thead>
+            <tbody id="supp-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="empty-msg" style="text-align:center;padding:3rem;color:#aaa;font-family:Arial,sans-serif;font-size:14px;">
+        Select a year above to view and edit rates.
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- New year modal -->
+<div class="overlay" id="new-year-overlay">
+  <div class="modal">
+    <h3>Add New Year</h3>
+    <p>Enter the new year. Rates will be copied from the most recent year as a starting point — adjust as needed before saving.</p>
+    <input type="number" id="new-year-input" placeholder="e.g. 2028" min="2020" max="2040" />
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeNewYearModal()">Cancel</button>
+      <button class="btn green" onclick="addNewYear()">Create</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
+const HEADERS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_KEY,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=minimal'
+};
+
+const PASSWORD = 'Pottsie';
+let currentYear = null;
+let allRates = []; // all rows from Supabase
+let currentRows = []; // rows for selected year
+
+// ── Password ──────────────────────────────────────────────────
+function checkPassword() {
+  const val = document.getElementById('pw-input').value;
+  if (val === PASSWORD) {
+    document.getElementById('password-screen').style.display = 'none';
+    document.getElementById('main-screen').style.display = 'block';
+    loadAllRates();
+  } else {
+    document.getElementById('pw-error').style.display = 'block';
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+  }
+}
+document.getElementById('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkPassword(); });
+
+// ── Status ────────────────────────────────────────────────────
+function setStatus(msg, type) {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.className = type || '';
+}
+
+// ── Load all rates from Supabase ──────────────────────────────
+async function loadAllRates() {
+  setStatus('Loading…', 'info');
+  try {
+    const resp = await fetch(
+      `${SUPABASE_URL}/rest/v1/commission_rates?select=*&order=year.desc,carrier.asc`,
+      { headers: HEADERS }
+    );
+    if (!resp.ok) throw new Error(await resp.text());
+    allRates = await resp.json();
+
+    // Populate year dropdown
+    const years = [...new Set(allRates.map(r => r.year))].sort((a,b) => b - a);
+    const sel = document.getElementById('year-select');
+    sel.innerHTML = '<option value="">— Select Year —</option>';
+    years.forEach(y => {
+      const o = document.createElement('option');
+      o.value = y; o.textContent = y;
+      sel.appendChild(o);
+    });
+
+    setStatus('', '');
+  } catch(err) {
+    setStatus('Error loading rates: ' + err.message, 'error');
+  }
+}
+
+// ── Load selected year into grid ──────────────────────────────
+function loadYear() {
+  const year = parseInt(document.getElementById('year-select').value);
+  if (!year) {
+    document.getElementById('mapd-section').style.display = 'none';
+    document.getElementById('empty-msg').style.display = 'block';
+    document.getElementById('btn-save').disabled = true;
+    return;
+  }
+  currentYear = year;
+  currentRows = allRates.filter(r => r.year === year);
+  renderGrid(currentRows);
+  document.getElementById('mapd-section').style.display = 'block';
+  document.getElementById('empty-msg').style.display = 'none';
+  document.getElementById('btn-save').disabled = false;
+  setStatus('', '');
+}
+
+// ── Render grid ───────────────────────────────────────────────
+function renderGrid(rows) {
+  const mapdRows = rows.filter(r => r.product_type === 'MAPD');
+  const suppRows = rows.filter(r => r.product_type === 'MSUP');
+
+  const mapdBody = document.getElementById('mapd-body');
+  mapdBody.innerHTML = '';
+  mapdRows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.dataset.id = r.id;
+    tr.dataset.carrier = r.carrier;
+    tr.dataset.productType = r.product_type;
+    tr.innerHTML = `
+      <td>${r.carrier}</td>
+      <td><input class="rate-input" data-field="new_to_medicare"  value="${r.new_to_medicare  ?? ''}" /></td>
+      <td><input class="rate-input" data-field="purchase_override" value="${r.purchase_override ?? ''}" /></td>
+      <td><input class="rate-input" data-field="renewal"           value="${r.renewal           ?? ''}" /></td>
+      <td><input class="rate-input" data-field="renewal_override"  value="${r.renewal_override  ?? ''}" /></td>
+      <td><input class="rate-input" data-field="monthly_renewal"   value="${r.monthly_renewal   ?? ''}" /></td>
+      <td><input class="rate-input" data-field="monthly_override"  value="${r.monthly_override  ?? ''}" /></td>
+    `;
+    mapdBody.appendChild(tr);
+  });
+
+  const suppBody = document.getElementById('supp-body');
+  suppBody.innerHTML = '';
+  suppRows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.dataset.id = r.id;
+    tr.dataset.carrier = r.carrier;
+    tr.dataset.productType = r.product_type;
+    tr.innerHTML = `
+      <td>${r.carrier}</td>
+      <td><input class="rate-input pct" data-field="supplement_rate" value="${r.supplement_rate ?? ''}" /></td>
+    `;
+    suppBody.appendChild(tr);
+  });
+}
+
+// ── Save changes ──────────────────────────────────────────────
+async function saveRates() {
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  setStatus('Saving…', 'info');
+
+  try {
+    const allTrs = [
+      ...document.getElementById('mapd-body').querySelectorAll('tr'),
+      ...document.getElementById('supp-body').querySelectorAll('tr')
+    ];
+
+    for (const tr of allTrs) {
+      const id = tr.dataset.id;
+      const updates = {};
+      tr.querySelectorAll('input[data-field]').forEach(inp => {
+        const val = inp.value.trim();
+        updates[inp.dataset.field] = val === '' ? null : parseFloat(val);
+      });
+
+      if (id && !id.startsWith('new-')) {
+        // Update existing row
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/commission_rates?id=eq.${id}`, {
+          method: 'PATCH', headers: HEADERS, body: JSON.stringify(updates)
+        });
+        if (!resp.ok) throw new Error('Update failed: ' + await resp.text());
+      } else {
+        // Insert new row
+        const carrier = tr.dataset.carrier;
+        const productType = tr.dataset.productType;
+        const payload = { year: currentYear, carrier, product_type: productType, ...updates };
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/commission_rates`, {
+          method: 'POST', headers: { ...HEADERS, 'Prefer': 'return=representation' },
+          body: JSON.stringify(payload)
+        });
+        if (!resp.ok) throw new Error('Insert failed: ' + await resp.text());
+        const inserted = await resp.json();
+        if (inserted && inserted[0]) tr.dataset.id = inserted[0].id;
+      }
+    }
+
+    await loadAllRates();
+    setStatus('✓ Saved successfully.', 'success');
+  } catch(err) {
+    setStatus('Error: ' + err.message, 'error');
+  }
+
+  btn.disabled = false;
+}
+
+// ── New year modal ────────────────────────────────────────────
+function showNewYearModal() {
+  const years = [...new Set(allRates.map(r => r.year))].sort((a,b) => b - a);
+  const next = years.length ? years[0] + 1 : new Date().getFullYear() + 1;
+  document.getElementById('new-year-input').value = next;
+  document.getElementById('new-year-overlay').classList.add('visible');
+}
+
+function closeNewYearModal() {
+  document.getElementById('new-year-overlay').classList.remove('visible');
+}
+
+async function addNewYear() {
+  const newYear = parseInt(document.getElementById('new-year-input').value);
+  if (!newYear || newYear < 2020 || newYear > 2040) {
+    alert('Please enter a valid year between 2020 and 2040.');
+    return;
+  }
+
+  const existingYears = [...new Set(allRates.map(r => r.year))];
+  if (existingYears.includes(newYear)) {
+    alert(`Year ${newYear} already exists. Select it from the dropdown to edit.`);
+    return;
+  }
+
+  // Find most recent year to copy from
+  const sourceYear = Math.max(...existingYears);
+  const sourceRows = allRates.filter(r => r.year === sourceYear);
+
+  closeNewYearModal();
+  currentYear = newYear;
+
+  // Build new rows from source — mark as new (no id yet)
+  const newRows = sourceRows.map((r, i) => ({
+    ...r,
+    id: `new-${i}`,
+    year: newYear,
+  }));
+
+  // Add new year to dropdown and select it
+  const sel = document.getElementById('year-select');
+  const o = document.createElement('option');
+  o.value = newYear; o.textContent = newYear;
+  sel.insertBefore(o, sel.options[1]); // insert after placeholder
+  sel.value = newYear;
+
+  currentRows = newRows;
+  renderGrid(newRows);
+  document.getElementById('mapd-section').style.display = 'block';
+  document.getElementById('empty-msg').style.display = 'none';
+  document.getElementById('btn-save').disabled = false;
+  setStatus(`Year ${newYear} copied from ${sourceYear} — adjust values then Save.`, 'info');
+}
+</script>
+</body>
+</html>
