@@ -90,6 +90,7 @@ body { background: #d8eecb; font-family: Georgia, serif; padding: 30px 16px; min
       <div class="tool-card">
         <h3>👤 Clients Table</h3>
         <p>Backup saves all client records to a local JSON file. Restore reloads from a backup file — existing records are deleted first.</p>
+        <p style="color:#e65100;font-size:12px;font-family:Arial,sans-serif;margin-bottom:12px;">⚠ You must delete Transactions before deleting Clients.</p>
         <div class="btn-row">
           <button class="btn-backup" onclick="backupTable('clients', 'clients_backup')">⬇ Backup</button>
           <button class="btn-restore" onclick="document.getElementById('restore-clients').click()">⬆ Restore</button>
