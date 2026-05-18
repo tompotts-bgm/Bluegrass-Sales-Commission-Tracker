@@ -345,7 +345,35 @@
     } catch(e) {
       console.error('Commission rates load failed:', e.message);
     }
-    console.log('[CommRates] COMM_TABLE built:', JSON.stringify(COMM_TABLE, null, 2));
+    // ── Show loaded rates on screen for verification ──────────
+    showRateDebug();
+  }
+
+  function showRateDebug() {
+    let el = document.getElementById('rateDebugPanel');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'rateDebugPanel';
+      el.style.cssText = 'margin:12px 0;padding:10px 14px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;font-size:12px;font-family:monospace;white-space:pre-wrap;line-height:1.6;';
+      const form = document.querySelector('.form-section') || document.body;
+      form.insertAdjacentElement('beforebegin', el);
+    }
+    const years = Object.keys(COMM_TABLE).sort();
+    if (!years.length) { el.textContent = '⚠️ COMM_TABLE is EMPTY — no rates loaded from Supabase'; return; }
+    let txt = '✅ Commission rates loaded from Supabase:\n\n';
+    years.forEach(yr => {
+      txt += `── ${yr} ──\n`;
+      const mapd = COMM_TABLE[yr].mapd || {};
+      Object.keys(mapd).sort().forEach(carrier => {
+        const r = mapd[carrier];
+        txt += `  MAPD  ${carrier}: orig=${r.newToMedicare}, renewal=${r.renewal}, monthlyRenewal=${r.monthlyRenewal}, monthlyOverride=${r.monthlyOverride}, purchaseOverride=${r.purchaseOverride}\n`;
+      });
+      const supp = COMM_TABLE[yr].supp || {};
+      Object.keys(supp).sort().forEach(carrier => {
+        txt += `  SUPP  ${carrier}: rate=${supp[carrier]}\n`;
+      });
+    });
+    el.textContent = txt;
   }
 
   // ── STATE ─────────────────────────────────────────────────────────
