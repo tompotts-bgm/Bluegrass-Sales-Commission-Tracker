@@ -936,6 +936,7 @@
     // ── 1 originating commission row ──────────────────────────
     const originatingRow = {
       ...base,
+      record_type:       'originating_commission',
       orig_commission:   origCommVal,
       monthly_renewal:   null,
       monthly_override:  null,
@@ -950,6 +951,7 @@
         renewalRows.push({
           ...base,
           effective_date:    `${result.renewalStartYear}-${mo}-01`,
+          record_type:       'monthly_renewal',
           orig_commission:   null,
           monthly_renewal:   monthlyRenewalAmt,
           monthly_override:  null,
@@ -961,6 +963,7 @@
     // ── 1 override originating row ─────────────────────────────
     const overrideOriginatingRow = {
       ...base,
+      record_type:       'originating_override',
       orig_commission:   null,
       monthly_renewal:   null,
       monthly_override:  null,
@@ -975,6 +978,7 @@
         overrideRows.push({
           ...base,
           effective_date:    `${result.renewalStartYear}-${mo}-01`,
+          record_type:       'monthly_override',
           orig_commission:   null,
           monthly_renewal:   null,
           monthly_override:  MONTHLY_OVERRIDE,
@@ -985,7 +989,7 @@
 
     const allRows = [originatingRow, ...renewalRows, overrideOriginatingRow, ...overrideRows];
     console.log('[Save] allRows count:', allRows.length, 'renewalRows:', renewalRows.length, 'overrideRows:', overrideRows.length);
-    console.log('[Save] allRows:', JSON.stringify(allRows.map(r => ({ orig_commission: r.orig_commission, monthly_renewal: r.monthly_renewal, monthly_override: r.monthly_override, purchase_override: r.purchase_override, effective_date: r.effective_date })), null, 2));
+    console.log('[Save] allRows:', JSON.stringify(allRows.map(r => ({ record_type: r.record_type, orig_commission: r.orig_commission, monthly_renewal: r.monthly_renewal, monthly_override: r.monthly_override, purchase_override: r.purchase_override, effective_date: r.effective_date })), null, 2));
 
     showStatus(`Saving ${allRows.length} records…`, false, true);
 
