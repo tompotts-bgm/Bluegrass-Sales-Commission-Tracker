@@ -324,8 +324,11 @@ async function loadData() {
     from += pageSize;
   }
 
-  // Keep only originating policy records: orig_commission not null and not zero
+  // Keep only originating policy records: use record_type going forward,
+  // fall back to the orig_commission check for older rows saved before
+  // record_type existed.
   allData = all.filter(function(r) {
+    if (r.record_type) return r.record_type === 'originating_commission';
     const oc = r.orig_commission;
     return oc !== null && oc !== undefined && parseFloat(oc) !== 0;
   });
