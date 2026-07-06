@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Policy / Sales Report — BluegrassMedicare LLC</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ── Base ─────────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; color: #222; background: #f4f6f9; padding: 2rem; }
+.container { max-width: 1200px; margin: 0 auto; }
+h1 { font-size: 22px; font-weight: 600; color: #1a1a2e; margin-bottom: 4px; }
+p.sub { font-size: 13px; color: #666; margin-bottom: 1.25rem; }
+
+/* ── Nav ─────────────────────────────────────────────────────── */
+.nav { display: flex; gap: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.nav a { font-size: 13px; padding: 7px 14px; border-radius: 7px; border: 1px solid #ddd; background: #fff; color: #333; text-decoration: none; font-weight: 500; }
+.nav a:hover { background: #f0f0f0; }
+.nav a.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+
+/* ── Status ──────────────────────────────────────────────────── */
+#db-status { font-size: 12px; padding: 8px 12px; border-radius: 6px; margin-bottom: 1.25rem; display: none; }
+#db-status.ok  { background: #e8f5e9; color: #2e7d32; }
+#db-status.err { background: #fce4ec; color: #b71c1c; }
+
+/* ── Filters ─────────────────────────────────────────────────── */
+.filters { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+.filter-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 0.75rem; }
+.filter-row:last-child { margin-bottom: 0; }
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
+.filter-group label { font-size: 11px; font-weight: 700; color: #888; letter-spacing: 0.5px; }
+.filter-group select,
+.filter-group input[type="date"],
+.filter-group input[type="text"] {
+  font-size: 13px; padding: 6px 10px; border: 1px solid #ddd;
+  border-radius: 6px; font-family: Arial, sans-serif;
+  background: #fff; color: #222; min-width: 150px;
+}
+.filter-group input[type="text"] { min-width: 140px; }
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+button { font-size: 13px; padding: 8px 16px; border-radius: 7px; border: 1px solid #ccc; background: #fff; color: #333; cursor: pointer; font-family: Arial, sans-serif; font-weight: 500; transition: background 0.1s; white-space: nowrap; }
+button:hover { background: #f0f0f0; }
+button.primary { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+button.primary:hover { background: #2d2d5e; }
+button.secondary { border-color: #1976d2; color: #1976d2; }
+button.secondary:hover { background: #e3f2fd; }
+
+/* ── Summary cards ───────────────────────────────────────────── */
+.summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+.card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 1rem 1.25rem; }
+.card-label { font-size: 11px; font-weight: 700; color: #888; letter-spacing: 0.5px; margin-bottom: 4px; }
+.card-value { font-size: 21px; font-weight: 700; color: #1a1a2e; }
+.card-sub { font-size: 12px; color: #aaa; margin-top: 2px; }
+
+/* ── Table card ──────────────────────────────────────────────── */
+.table-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; margin-bottom: 1.5rem; }
+.table-header { padding: 1rem 1.25rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+.table-header h3 { font-size: 15px; font-weight: 600; color: #333; }
+.table-header-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #1a1a2e; color: #fff; padding: 10px 12px; text-align: left; font-weight: 600; white-space: nowrap; cursor: pointer; user-select: none; }
+th:hover { background: #2d2d5e; }
+th.num, td.num { text-align: right; }
+td { padding: 8px 12px; border-bottom: 1px solid #eee; white-space: nowrap; }
+tr:nth-child(even) td { background: #f5f7fa; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #e8f4fd; }
+tr.total-row td { font-weight: 700; background: #e8f4fd !important; border-top: 2px solid #1976d2; }
+.yn-yes { color: #2e7d32; font-weight: 700; }
+.yn-no  { color: #999; }
+
+.msg { padding: 3rem; text-align: center; color: #aaa; font-size: 14px; }
+.spinner-lg { display: inline-block; width: 28px; height: 28px; border: 3px solid #e0e0e0; border-top-color: #1a1a2e; border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; padding-top: 1rem; border-top: 1px solid #eee; }
+
+/* ── PRINT STYLES ────────────────────────────────────────────── */
+#print-header { display: none; }
+
+@media print {
+  body { background: #fff; padding: 0; font-size: 11px; }
+  .container { max-width: 100%; }
+  .nav, .filters, .summary-cards, .btn-row,
+  #db-status, footer, .table-header-right { display: none !important; }
+
+  #print-header {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #1a1a2e;
+  }
+  #print-header .agency { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+  #print-header .report-name { font-size: 14px; color: #444; margin-top: 4px; }
+  #print-header .report-meta { font-size: 11px; color: #888; margin-top: 4px; }
+
+  .table-card { border: none; border-radius: 0; box-shadow: none; page-break-inside: avoid; }
+  .table-header { padding: 0.5rem 0; border-bottom: 1px solid #333; }
+  .table-header h3 { font-size: 13px; }
+
+  table { font-size: 10px; width: 100%; }
+  th { background: #1a1a2e !important; color: #fff !important; padding: 6px 8px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  td { padding: 5px 8px; border-bottom: 0.5px solid #ddd; }
+  tr:nth-child(even) td { background: #f5f5f5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  tr.total-row td { background: #e8f4fd !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: 700; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div id="print-header">
+    <div class="agency">BluegrassMedicare LLC</div>
+    <div class="report-name">Policy / Sales Report</div>
+    <div class="report-meta" id="ph-report-meta"></div>
+  </div>
+
+  <h1>📝 Policy / Sales Report</h1>
+  <p class="sub">BluegrassMedicare LLC &nbsp;·&nbsp; One line per policy sold &nbsp;·&nbsp; Live data from Supabase</p>
+
+  <div class="nav">
+    <a href="index.html">← Menu</a>
+    <a href="commission_report.html">Commission Report</a>
+    <a href="commission_client_report.html">Client Report</a>
+    <a href="#" class="active">Policy / Sales Report</a>
+  </div>
+
+  <div id="db-status"></div>
+
+  <!-- ── Filters ── -->
+  <div class="filters">
+    <div class="filter-row">
+      <div class="filter-group">
+        <label>CLIENT NAME</label>
+        <input type="text" id="filter-client" placeholder="Search name…">
+      </div>
+      <div class="filter-group">
+        <label>BROKER</label>
+        <select id="filter-broker">
+          <option value="">All Brokers</option>
+          <option value="Tom">Tom</option>
+          <option value="Alex">Alex</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>PRODUCT TYPE</label>
+        <select id="filter-product">
+          <option value="">All Products</option>
+          <option value="MAPD">MAPD</option>
+          <option value="PDP">PDP</option>
+          <option value="Supplement">Supplement</option>
+          <option value="Dental">Dental</option>
+          <option value="HospitalIndemnity">Hospital Indemnity</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>COMPANY</label>
+        <select id="filter-company"><option value="">All Companies</option></select>
+      </div>
+      <div class="filter-group">
+        <label>ZIP CODE</label>
+        <input type="text" id="filter-zip" placeholder="e.g. 40502">
+      </div>
+    </div>
+    <div class="filter-row">
+      <div class="filter-group">
+        <label>NEW CLIENT</label>
+        <select id="filter-new-client">
+          <option value="">All</option>
+          <option value="Y">Yes</option>
+          <option value="N">No</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>NEW TO MEDICARE</label>
+        <select id="filter-new-medicare">
+          <option value="">All</option>
+          <option value="Y">Yes</option>
+          <option value="N">No</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>EFFECTIVE MONTH</label>
+        <select id="filter-month">
+          <option value="">All Months</option>
+          <option>Jan</option><option>Feb</option><option>Mar</option>
+          <option>Apr</option><option>May</option><option>Jun</option>
+          <option>Jul</option><option>Aug</option><option>Sep</option>
+          <option>Oct</option><option>Nov</option><option>Dec</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>EFFECTIVE YEAR</label>
+        <select id="filter-year"><option value="">All Years</option></select>
+      </div>
+    </div>
+    <div class="filter-row">
+      <div class="filter-group">
+        <label>DATE WRITTEN FROM</label>
+        <input type="date" id="filter-written-from">
+      </div>
+      <div class="filter-group">
+        <label>DATE WRITTEN TO</label>
+        <input type="date" id="filter-written-to">
+      </div>
+    </div>
+    <div class="filter-row">
+      <div class="btn-row">
+        <button class="primary" id="btn-run">▶ Run Report</button>
+        <button id="btn-reset">Reset Filters</button>
+        <button class="secondary" id="btn-export">⬇ Export Excel</button>
+        <button class="secondary" onclick="printReport('portrait')">🖨 Print Portrait</button>
+        <button class="secondary" onclick="printReport('landscape')">🖨 Print Landscape</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Summary cards ── -->
+  <div class="summary-cards">
+    <div class="card"><div class="card-label">POLICIES</div><div class="card-value" id="card-count">—</div><div class="card-sub">matching records</div></div>
+    <div class="card"><div class="card-label">TOTAL ORIG. COMMISSION</div><div class="card-value" id="card-total">—</div><div class="card-sub">sum across policies</div></div>
+    <div class="card"><div class="card-label">AVG PER POLICY</div><div class="card-value" id="card-avg">—</div><div class="card-sub">orig. commission</div></div>
+    <div class="card"><div class="card-label">NEW CLIENTS</div><div class="card-value" id="card-newclient">—</div><div class="card-sub" id="card-newclient-sub"></div></div>
+    <div class="card"><div class="card-label">NEW TO MEDICARE</div><div class="card-value" id="card-newmed">—</div><div class="card-sub" id="card-newmed-sub"></div></div>
+  </div>
+
+  <!-- ── Report table ── -->
+  <div class="table-card">
+    <div class="table-header">
+      <h3 id="report-title">Policy / Sales Report</h3>
+      <div class="table-header-right">
+        <span id="report-meta" style="font-size:12px;color:#888;"></span>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="main-table">
+        <thead>
+          <tr>
+            <th onclick="sort('last_name')">Client Name</th>
+            <th onclick="sort('broker')">Broker</th>
+            <th onclick="sort('company')">Company</th>
+            <th onclick="sort('product_type')">Product Type</th>
+            <th onclick="sort('date_written')">Date Written</th>
+            <th onclick="sort('effective_date')">Effective Date</th>
+            <th>New Client</th>
+            <th>New to Medicare</th>
+            <th>Zip</th>
+            <th class="num" onclick="sort('orig_commission')">Orig. Commission</th>
+          </tr>
+        </thead>
+        <tbody id="main-body"><tr><td colspan="10" class="msg"><div class="spinner-lg"></div><br>Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>BluegrassMedicare LLC &nbsp;·&nbsp; Policy / Sales Report &nbsp;·&nbsp; Data from Supabase</footer>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let allData      = [];   // originating-policy records only
+let filteredData = [];
+let sortCol      = 'date_written';
+let sortDir      = -1;
+
+function fmt(n)  { return '$' + Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtN(n) { return Number(n).toLocaleString('en-US'); }
+function fmtDate(val) {
+  if (!val) return '—';
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return val;
+  const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dy = String(d.getUTCDate()).padStart(2, '0');
+  const yr = d.getUTCFullYear();
+  return mo + '/' + dy + '/' + yr;
+}
+function effMonth(val) {
+  if (!val) return null;
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return null;
+  return d.getUTCMonth();
+}
+function effYear(val) {
+  if (!val) return null;
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return null;
+  return d.getUTCFullYear();
+}
+
+function setDbStatus(msg, cls) {
+  const el = document.getElementById('db-status');
+  el.textContent = msg; el.className = cls; el.style.display = 'block';
+}
+
+// ── Load (paginated — transactions table can have many rows) ──────
+async function loadData() {
+  try {
+    const { error } = await db.from('transactions').select('id').limit(1);
+    if (error) throw error;
+    setDbStatus('✅ Connected to Supabase', 'ok');
+  } catch(e) { setDbStatus('❌ Connection failed: ' + e.message, 'err'); return; }
+
+  let all = [];
+  const pageSize = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await db.from('transactions')
+      .select('*')
+      .order('date_written', { ascending: false })
+      .range(from, from + pageSize - 1);
+    if (error) { setDbStatus('❌ Failed to load data: ' + error.message, 'err'); return; }
+    all = all.concat(data || []);
+    if (!data || data.length < pageSize) break;
+    from += pageSize;
+  }
+
+  // Keep only originating policy records: orig_commission not null and not zero
+  allData = all.filter(function(r) {
+    const oc = r.orig_commission;
+    return oc !== null && oc !== undefined && parseFloat(oc) !== 0;
+  });
+
+  populateFilters();
+  runReport();
+}
+
+function populateFilters() {
+  const companies = [...new Set(allData.map(r => r.company).filter(Boolean))].sort();
+  const years = [...new Set(allData.map(r => effYear(r.effective_date)).filter(Boolean))].sort().reverse();
+
+  function fill(id, items) {
+    const sel = document.getElementById(id);
+    items.forEach(function(v) {
+      const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o);
+    });
+  }
+  fill('filter-company', companies);
+  fill('filter-year', years);
+}
+
+// ── Filter ────────────────────────────────────────────────────────
+function applyFilters() {
+  const client    = document.getElementById('filter-client').value.toLowerCase().trim();
+  const broker    = document.getElementById('filter-broker').value;
+  const product   = document.getElementById('filter-product').value;
+  const company   = document.getElementById('filter-company').value;
+  const zip       = document.getElementById('filter-zip').value.trim();
+  const newClient = document.getElementById('filter-new-client').value;
+  const newMed    = document.getElementById('filter-new-medicare').value;
+  const month     = document.getElementById('filter-month').value;
+  const year      = document.getElementById('filter-year').value;
+  const wFrom     = document.getElementById('filter-written-from').value;
+  const wTo       = document.getElementById('filter-written-to').value;
+
+  filteredData = allData.filter(function(r) {
+    const fullName = ((r.first_name||'') + ' ' + (r.last_name||'')).toLowerCase();
+    if (client    && !fullName.includes(client))            return false;
+    if (broker    && r.broker  !== broker)                  return false;
+    if (product   && r.product_type !== product)            return false;
+    if (company   && r.company !== company)                 return false;
+    if (zip       && (r.zip||'') !== zip)                    return false;
+    if (newClient && (r.new_client||'')      !== newClient) return false;
+    if (newMed    && (r.new_to_medicare||'') !== newMed)    return false;
+    if (month) {
+      const m = effMonth(r.effective_date);
+      if (m === null || MONTHS[m] !== month) return false;
+    }
+    if (year && String(effYear(r.effective_date)) !== year) return false;
+    if (wFrom && (r.date_written||'') < wFrom) return false;
+    if (wTo   && (r.date_written||'') > wTo)   return false;
+    return true;
+  });
+}
+
+function getFilterDesc() {
+  const parts = [];
+  const client    = document.getElementById('filter-client').value.trim();
+  const broker    = document.getElementById('filter-broker').value;
+  const product   = document.getElementById('filter-product').value;
+  const company   = document.getElementById('filter-company').value;
+  const zip       = document.getElementById('filter-zip').value.trim();
+  const newClient = document.getElementById('filter-new-client').value;
+  const newMed    = document.getElementById('filter-new-medicare').value;
+  const month     = document.getElementById('filter-month').value;
+  const year      = document.getElementById('filter-year').value;
+  const wFrom     = document.getElementById('filter-written-from').value;
+  const wTo       = document.getElementById('filter-written-to').value;
+  if (client)  parts.push('Client: ' + client);
+  if (broker)  parts.push('Broker: ' + broker);
+  if (product) parts.push('Product: ' + product);
+  if (company) parts.push('Company: ' + company);
+  if (zip)     parts.push('Zip: ' + zip);
+  if (newClient) parts.push('New Client: ' + (newClient==='Y'?'Yes':'No'));
+  if (newMed)    parts.push('New to Medicare: ' + (newMed==='Y'?'Yes':'No'));
+  if (month)   parts.push('Eff Month: ' + month);
+  if (year)    parts.push('Eff Year: ' + year);
+  if (wFrom || wTo) parts.push('Written: ' + (wFrom||'…') + ' → ' + (wTo||'…'));
+  return parts.length ? parts.join(' | ') : 'All policies';
+}
+
+// ── Run ───────────────────────────────────────────────────────────
+function runReport() {
+  applyFilters();
+  renderCards();
+  const meta = getFilterDesc();
+  document.getElementById('report-meta').textContent = meta;
+  document.getElementById('ph-report-meta').textContent =
+    meta + '   ·   Printed: ' + new Date().toLocaleDateString();
+  renderTable();
+}
+
+// ── Cards ─────────────────────────────────────────────────────────
+function renderCards() {
+  const total  = filteredData.reduce(function(s,r){ return s+(parseFloat(r.orig_commission)||0); },0);
+  const avg    = filteredData.length ? total / filteredData.length : 0;
+  const newC   = filteredData.filter(function(r){ return r.new_client === 'Y'; }).length;
+  const newM   = filteredData.filter(function(r){ return r.new_to_medicare === 'Y'; }).length;
+
+  document.getElementById('card-count').textContent   = fmtN(filteredData.length);
+  document.getElementById('card-total').textContent   = fmt(total);
+  document.getElementById('card-avg').textContent     = fmt(avg);
+  document.getElementById('card-newclient').textContent = fmtN(newC);
+  document.getElementById('card-newclient-sub').textContent = filteredData.length ? (Math.round(newC/filteredData.length*100)) + '% of policies' : '';
+  document.getElementById('card-newmed').textContent  = fmtN(newM);
+  document.getElementById('card-newmed-sub').textContent = filteredData.length ? (Math.round(newM/filteredData.length*100)) + '% of policies' : '';
+}
+
+// ── Table ─────────────────────────────────────────────────────────
+function ynBadge(val) {
+  if (val === 'Y') return '<span class="yn-yes">Yes</span>';
+  if (val === 'N') return '<span class="yn-no">No</span>';
+  return '—';
+}
+
+function renderTable() {
+  document.getElementById('report-title').textContent = 'Policy / Sales Report (' + filteredData.length + ' policies)';
+
+  const sorted = filteredData.slice().sort(function(a,b) {
+    let av = a[sortCol], bv = b[sortCol];
+    if (sortCol === 'orig_commission') { av = parseFloat(av)||0; bv = parseFloat(bv)||0; }
+    else if (sortCol === 'last_name') { av = (a.last_name||'')+(a.first_name||''); bv=(b.last_name||'')+(b.first_name||''); }
+    else { av = av || ''; bv = bv || ''; }
+    if (av < bv) return -1*sortDir;
+    if (av > bv) return  1*sortDir;
+    return 0;
+  });
+
+  const tbody = document.getElementById('main-body');
+  tbody.innerHTML = '';
+  if (!sorted.length) { tbody.innerHTML = '<tr><td colspan="10" class="msg">No policies found.</td></tr>'; return; }
+
+  let grandTotal = 0;
+  sorted.forEach(function(r) {
+    const oc = parseFloat(r.orig_commission) || 0;
+    grandTotal += oc;
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + ((r.first_name||'') + ' ' + (r.last_name||'')).trim() + '</td>' +
+      '<td>' + (r.broker||'—') + '</td>' +
+      '<td>' + (r.company||'—') + '</td>' +
+      '<td>' + (r.product_type||'—') + '</td>' +
+      '<td>' + fmtDate(r.date_written) + '</td>' +
+      '<td>' + fmtDate(r.effective_date) + '</td>' +
+      '<td>' + ynBadge(r.new_client) + '</td>' +
+      '<td>' + ynBadge(r.new_to_medicare) + '</td>' +
+      '<td>' + (r.zip||'—') + '</td>' +
+      '<td class="num">' + fmt(oc) + '</td>';
+    tbody.appendChild(tr);
+  });
+
+  const ttr = document.createElement('tr'); ttr.className = 'total-row';
+  ttr.innerHTML = '<td colspan="9">TOTAL — ' + sorted.length + ' policies</td><td class="num">' + fmt(grandTotal) + '</td>';
+  tbody.appendChild(ttr);
+}
+
+function sort(col) {
+  if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = -1; }
+  renderTable();
+}
+
+// ── Print ─────────────────────────────────────────────────────────
+function printReport(orientation) {
+  let styleEl = document.getElementById('print-page-style');
+  if (!styleEl) { styleEl = document.createElement('style'); styleEl.id='print-page-style'; document.head.appendChild(styleEl); }
+  styleEl.textContent = '@page { size: letter ' + orientation + '; margin: 0.75in; }';
+  window.print();
+}
+
+// ── Export Excel ──────────────────────────────────────────────────
+function exportExcel() {
+  const header = ['Client Name','Broker','Company','Product Type','Date Written','Effective Date','New Client','New to Medicare','Zip','Orig Commission'];
+  const rows = filteredData.map(function(r) {
+    return [
+      ((r.first_name||'') + ' ' + (r.last_name||'')).trim(),
+      r.broker || '', r.company || '', r.product_type || '',
+      fmtDate(r.date_written), fmtDate(r.effective_date),
+      r.new_client || '', r.new_to_medicare || '', r.zip || '',
+      parseFloat(r.orig_commission) || 0
+    ];
+  });
+  const total = rows.reduce(function(s,r){ return s + r[9]; }, 0);
+  rows.push(['', '', '', '', '', '', '', '', 'TOTAL', parseFloat(total.toFixed(2))]);
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([header].concat(rows));
+  ws['!cols'] = [22,10,14,16,14,14,12,16,10,16].map(function(w){return{wch:w};});
+  XLSX.utils.book_append_sheet(wb, ws, 'Policy Report');
+
+  const today = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, 'BluegrassMedicare_Policy_Report_' + today + '.xlsx');
+}
+
+// ── Events ────────────────────────────────────────────────────────
+document.getElementById('btn-run').addEventListener('click', runReport);
+document.getElementById('btn-export').addEventListener('click', exportExcel);
+document.getElementById('btn-reset').addEventListener('click', function() {
+  ['filter-client','filter-zip','filter-written-from','filter-written-to'].forEach(function(id){
+    document.getElementById(id).value = '';
+  });
+  ['filter-broker','filter-product','filter-company','filter-new-client','filter-new-medicare','filter-month','filter-year'].forEach(function(id){
+    document.getElementById(id).value = '';
+  });
+  runReport();
+});
+
+// ── Init ──────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
