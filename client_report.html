@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Client Report — BluegrassMedicare LLC</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ── Base ─────────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; color: #222; background: #f4f6f9; padding: 2rem; }
+.container { max-width: 1200px; margin: 0 auto; }
+h1 { font-size: 22px; font-weight: 600; color: #1a1a2e; margin-bottom: 4px; }
+p.sub { font-size: 13px; color: #666; margin-bottom: 1.25rem; }
+
+/* ── Nav ─────────────────────────────────────────────────────── */
+.nav { display: flex; gap: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.nav a { font-size: 13px; padding: 7px 14px; border-radius: 7px; border: 1px solid #ddd; background: #fff; color: #333; text-decoration: none; font-weight: 500; }
+.nav a:hover { background: #f0f0f0; }
+.nav a.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+
+/* ── Status ──────────────────────────────────────────────────── */
+#db-status { font-size: 12px; padding: 8px 12px; border-radius: 6px; margin-bottom: 1.25rem; display: none; }
+#db-status.ok  { background: #e8f5e9; color: #2e7d32; }
+#db-status.err { background: #fce4ec; color: #b71c1c; }
+
+/* ── Filters ─────────────────────────────────────────────────── */
+.filters { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+.filter-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 0.75rem; }
+.filter-row:last-child { margin-bottom: 0; }
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
+.filter-group label { font-size: 11px; font-weight: 700; color: #888; letter-spacing: 0.5px; }
+.filter-group select,
+.filter-group input[type="date"],
+.filter-group input[type="text"] {
+  font-size: 13px; padding: 6px 10px; border: 1px solid #ddd;
+  border-radius: 6px; font-family: Arial, sans-serif;
+  background: #fff; color: #222; min-width: 150px;
+}
+.filter-group input[type="text"] { min-width: 140px; }
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+button { font-size: 13px; padding: 8px 16px; border-radius: 7px; border: 1px solid #ccc; background: #fff; color: #333; cursor: pointer; font-family: Arial, sans-serif; font-weight: 500; transition: background 0.1s; white-space: nowrap; }
+button:hover { background: #f0f0f0; }
+button.primary { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+button.primary:hover { background: #2d2d5e; }
+button.secondary { border-color: #1976d2; color: #1976d2; }
+button.secondary:hover { background: #e3f2fd; }
+
+/* ── Summary cards ───────────────────────────────────────────── */
+.summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+.card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 1rem 1.25rem; }
+.card-label { font-size: 11px; font-weight: 700; color: #888; letter-spacing: 0.5px; margin-bottom: 4px; }
+.card-value { font-size: 21px; font-weight: 700; color: #1a1a2e; }
+.card-sub { font-size: 12px; color: #aaa; margin-top: 2px; }
+
+/* ── Table card ──────────────────────────────────────────────── */
+.table-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; margin-bottom: 1.5rem; }
+.table-header { padding: 1rem 1.25rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+.table-header h3 { font-size: 15px; font-weight: 600; color: #333; }
+.table-header-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #1a1a2e; color: #fff; padding: 10px 12px; text-align: left; font-weight: 600; white-space: nowrap; cursor: pointer; user-select: none; }
+th:hover { background: #2d2d5e; }
+th.num, td.num { text-align: right; }
+td { padding: 8px 12px; border-bottom: 1px solid #eee; white-space: nowrap; }
+tr:nth-child(even) td { background: #f5f7fa; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #e8f4fd; }
+tr.total-row td { font-weight: 700; background: #e8f4fd !important; border-top: 2px solid #1976d2; }
+.yn-yes { color: #2e7d32; font-weight: 700; }
+.yn-no  { color: #999; }
+
+.msg { padding: 3rem; text-align: center; color: #aaa; font-size: 14px; }
+.spinner-lg { display: inline-block; width: 28px; height: 28px; border: 3px solid #e0e0e0; border-top-color: #1a1a2e; border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; padding-top: 1rem; border-top: 1px solid #eee; }
+
+/* ── PRINT STYLES ────────────────────────────────────────────── */
+#print-header { display: none; }
+
+@media print {
+  body { background: #fff; padding: 0; font-size: 11px; }
+  .container { max-width: 100%; }
+  .nav, .filters, .summary-cards, .btn-row,
+  #db-status, footer, .table-header-right { display: none !important; }
+
+  #print-header {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #1a1a2e;
+  }
+  #print-header .agency { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+  #print-header .report-name { font-size: 14px; color: #444; margin-top: 4px; }
+  #print-header .report-meta { font-size: 11px; color: #888; margin-top: 4px; }
+
+  .table-card { border: none; border-radius: 0; box-shadow: none; page-break-inside: avoid; }
+  .table-header { padding: 0.5rem 0; border-bottom: 1px solid #333; }
+  .table-header h3 { font-size: 13px; }
+
+  table { font-size: 10px; width: 100%; }
+  th { background: #1a1a2e !important; color: #fff !important; padding: 6px 8px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  td { padding: 5px 8px; border-bottom: 0.5px solid #ddd; }
+  tr:nth-child(even) td { background: #f5f5f5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  tr.total-row td { background: #e8f4fd !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: 700; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div id="print-header">
+    <div class="agency">BluegrassMedicare LLC</div>
+    <div class="report-name">Client Report</div>
+    <div class="report-meta" id="ph-report-meta"></div>
+  </div>
+
+  <h1>👤 Client Report</h1>
+  <p class="sub">BluegrassMedicare LLC &nbsp;·&nbsp; Search clients &amp; prospects &nbsp;·&nbsp; Live data from Supabase</p>
+
+  <div class="nav">
+    <a href="index.html">← Menu</a>
+    <a href="commission_report.html">Commission Report</a>
+    <a href="commission_client_report.html">Commission by Client</a>
+    <a href="policy_report.html">Policy / Sales Report</a>
+    <a href="renewal_commissions_report.html">Renewal Commissions Report</a>
+    <a href="#" class="active">Client Report</a>
+  </div>
+
+  <div id="db-status"></div>
+
+  <!-- ── Filters ── -->
+  <div class="filters">
+    <div class="filter-row">
+      <div class="filter-group">
+        <label>CLIENT NAME</label>
+        <input type="text" id="filter-client" placeholder="Search name…">
+      </div>
+      <div class="filter-group">
+        <label>STATUS</label>
+        <select id="filter-status">
+          <option value="">All Statuses</option>
+          <option value="C">Client</option>
+          <option value="P">Prospect</option>
+          <option value="F">Former Client</option>
+          <option value="N">Not a Prospect</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>ZIP CODE</label>
+        <input type="text" id="filter-zip" placeholder="e.g. 40502">
+      </div>
+      <div class="filter-group">
+        <label>CITY</label>
+        <select id="filter-city"><option value="">All Cities</option></select>
+      </div>
+      <div class="filter-group">
+        <label>STATE</label>
+        <select id="filter-state"><option value="">All States</option></select>
+      </div>
+      <div class="filter-group">
+        <label>COUNTY</label>
+        <select id="filter-county"><option value="">All Counties</option></select>
+      </div>
+    </div>
+    <div class="filter-row">
+      <div class="filter-group">
+        <label>METHOD OF CONTACT</label>
+        <select id="filter-contact-method">
+          <option value="">All Methods</option>
+          <option value="contact_sign">Sign</option>
+          <option value="contact_advertising">Advertising</option>
+          <option value="contact_workshop">Workshop</option>
+          <option value="contact_google">Google</option>
+          <option value="contact_referral">Referral</option>
+          <option value="contact_coi">COI</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>DATE OF BIRTH FROM</label>
+        <input type="date" id="filter-dob-from">
+      </div>
+      <div class="filter-group">
+        <label>DATE OF BIRTH TO</label>
+        <input type="date" id="filter-dob-to">
+      </div>
+      <div class="filter-group">
+        <label>CLIENT SINCE FROM</label>
+        <input type="date" id="filter-since-from">
+      </div>
+      <div class="filter-group">
+        <label>CLIENT SINCE TO</label>
+        <input type="date" id="filter-since-to">
+      </div>
+    </div>
+    <div class="filter-row">
+      <div class="btn-row">
+        <button class="primary" id="btn-run">▶ Run Report</button>
+        <button id="btn-reset">Reset Filters</button>
+        <button class="secondary" id="btn-export">⬇ Export Excel</button>
+        <button class="secondary" onclick="printReport('portrait')">🖨 Print Portrait</button>
+        <button class="secondary" onclick="printReport('landscape')">🖨 Print Landscape</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Summary cards ── -->
+  <div class="summary-cards">
+    <div class="card"><div class="card-label">MATCHING RECORDS</div><div class="card-value" id="card-count">—</div><div class="card-sub">total in results</div></div>
+    <div class="card"><div class="card-label">CLIENTS</div><div class="card-value" id="card-clients">—</div><div class="card-sub">status: Client</div></div>
+    <div class="card"><div class="card-label">PROSPECTS</div><div class="card-value" id="card-prospects">—</div><div class="card-sub">status: Prospect</div></div>
+    <div class="card"><div class="card-label">FORMER CLIENTS</div><div class="card-value" id="card-former">—</div><div class="card-sub">status: Former Client</div></div>
+    <div class="card"><div class="card-label">NOT A PROSPECT</div><div class="card-value" id="card-notprospect">—</div><div class="card-sub">status: Not a Prospect</div></div>
+  </div>
+
+  <!-- ── Report table ── -->
+  <div class="table-card">
+    <div class="table-header">
+      <h3 id="report-title">Client Report</h3>
+      <div class="table-header-right">
+        <span id="report-meta" style="font-size:12px;color:#888;"></span>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="main-table">
+        <thead>
+          <tr>
+            <th onclick="sort('last_name')">Client Name</th>
+            <th onclick="sort('status')">Status</th>
+            <th onclick="sort('city')">City</th>
+            <th onclick="sort('state')">State</th>
+            <th onclick="sort('zip')">Zip</th>
+            <th onclick="sort('county')">County</th>
+            <th onclick="sort('dob')">Date of Birth</th>
+            <th onclick="sort('client_since')">Client Since</th>
+            <th>Method of Contact</th>
+            <th>Cell Phone</th>
+          </tr>
+        </thead>
+        <tbody id="main-body"><tr><td colspan="10" class="msg"><div class="spinner-lg"></div><br>Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>BluegrassMedicare LLC &nbsp;·&nbsp; Client Report &nbsp;·&nbsp; Data from Supabase</footer>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const STATUS_LABELS = { C: 'Client', P: 'Prospect', F: 'Former Client', N: 'Not a Prospect' };
+const CONTACT_LABELS = {
+  contact_sign:        'Sign',
+  contact_advertising: 'Advertising',
+  contact_workshop:    'Workshop',
+  contact_google:      'Google',
+  contact_referral:    'Referral',
+  contact_coi:          'COI'
+};
+let allData      = [];   // all client records
+let filteredData = [];
+let sortCol      = 'last_name';
+let sortDir      = 1;
+
+function fmtN(n) { return Number(n).toLocaleString('en-US'); }
+function fmtDate(val) {
+  if (!val) return '—';
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return val;
+  const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dy = String(d.getUTCDate()).padStart(2, '0');
+  const yr = d.getUTCFullYear();
+  return mo + '/' + dy + '/' + yr;
+}
+function contactMethods(r) {
+  return Object.keys(CONTACT_LABELS).filter(k => !!r[k]).map(k => CONTACT_LABELS[k]);
+}
+
+function setDbStatus(msg, cls) {
+  const el = document.getElementById('db-status');
+  el.textContent = msg; el.className = cls; el.style.display = 'block';
+}
+
+// ── Load (paginated) ────────────────────────────────────────────
+async function loadData() {
+  try {
+    const { error } = await db.from('clients').select('id').limit(1);
+    if (error) throw error;
+    setDbStatus('✅ Connected to Supabase', 'ok');
+  } catch(e) { setDbStatus('❌ Connection failed: ' + e.message, 'err'); return; }
+
+  let all = [];
+  const pageSize = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await db.from('clients')
+      .select('*')
+      .order('last_name', { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) { setDbStatus('❌ Failed to load data: ' + error.message, 'err'); return; }
+    all = all.concat(data || []);
+    if (!data || data.length < pageSize) break;
+    from += pageSize;
+  }
+
+  allData = all;
+  populateFilters();
+  runReport();
+}
+
+function populateFilters() {
+  const cities   = [...new Set(allData.map(r => r.city).filter(Boolean))].sort();
+  const states   = [...new Set(allData.map(r => r.state).filter(Boolean))].sort();
+  const counties = [...new Set(allData.map(r => r.county).filter(Boolean))].sort();
+
+  function fill(id, items) {
+    const sel = document.getElementById(id);
+    items.forEach(function(v) {
+      const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o);
+    });
+  }
+  fill('filter-city', cities);
+  fill('filter-state', states);
+  fill('filter-county', counties);
+}
+
+// ── Filter ────────────────────────────────────────────────────────
+function applyFilters() {
+  const client   = document.getElementById('filter-client').value.toLowerCase().trim();
+  const status   = document.getElementById('filter-status').value;
+  const zip      = document.getElementById('filter-zip').value.trim();
+  const city     = document.getElementById('filter-city').value;
+  const state    = document.getElementById('filter-state').value;
+  const county   = document.getElementById('filter-county').value;
+  const contact  = document.getElementById('filter-contact-method').value;
+  const dobFrom  = document.getElementById('filter-dob-from').value;
+  const dobTo    = document.getElementById('filter-dob-to').value;
+  const sinceFrom = document.getElementById('filter-since-from').value;
+  const sinceTo   = document.getElementById('filter-since-to').value;
+
+  filteredData = allData.filter(function(r) {
+    const fullName = ((r.first_name||'') + ' ' + (r.last_name||'')).toLowerCase();
+    if (client  && !fullName.includes(client))       return false;
+    if (status  && r.status !== status)              return false;
+    if (zip     && (r.zip||'') !== zip)              return false;
+    if (city    && r.city !== city)                  return false;
+    if (state   && r.state !== state)                return false;
+    if (county  && r.county !== county)              return false;
+    if (contact && !r[contact])                      return false;
+    if (dobFrom && (r.dob||'') < dobFrom)            return false;
+    if (dobTo   && (r.dob||'') > dobTo)              return false;
+    if (sinceFrom && (r.client_since||'') < sinceFrom) return false;
+    if (sinceTo   && (r.client_since||'') > sinceTo)   return false;
+    return true;
+  });
+}
+
+function getFilterDesc() {
+  const parts = [];
+  const client   = document.getElementById('filter-client').value.trim();
+  const status   = document.getElementById('filter-status').value;
+  const zip      = document.getElementById('filter-zip').value.trim();
+  const city     = document.getElementById('filter-city').value;
+  const state    = document.getElementById('filter-state').value;
+  const county   = document.getElementById('filter-county').value;
+  const contact  = document.getElementById('filter-contact-method').value;
+  const dobFrom  = document.getElementById('filter-dob-from').value;
+  const dobTo    = document.getElementById('filter-dob-to').value;
+  const sinceFrom = document.getElementById('filter-since-from').value;
+  const sinceTo   = document.getElementById('filter-since-to').value;
+  if (client)  parts.push('Client: ' + client);
+  if (status)  parts.push('Status: ' + STATUS_LABELS[status]);
+  if (zip)     parts.push('Zip: ' + zip);
+  if (city)    parts.push('City: ' + city);
+  if (state)   parts.push('State: ' + state);
+  if (county)  parts.push('County: ' + county);
+  if (contact) parts.push('Contact Method: ' + CONTACT_LABELS[contact]);
+  if (dobFrom || dobTo) parts.push('DOB: ' + (dobFrom||'…') + ' → ' + (dobTo||'…'));
+  if (sinceFrom || sinceTo) parts.push('Client Since: ' + (sinceFrom||'…') + ' → ' + (sinceTo||'…'));
+  return parts.length ? parts.join(' | ') : 'All clients';
+}
+
+// ── Run ───────────────────────────────────────────────────────────
+function runReport() {
+  applyFilters();
+  renderCards();
+  const meta = getFilterDesc();
+  document.getElementById('report-meta').textContent = meta;
+  document.getElementById('ph-report-meta').textContent =
+    meta + '   ·   Printed: ' + new Date().toLocaleDateString();
+  renderTable();
+}
+
+// ── Cards ─────────────────────────────────────────────────────────
+function renderCards() {
+  const byStatus = { C: 0, P: 0, F: 0, N: 0 };
+  filteredData.forEach(function(r) { if (byStatus.hasOwnProperty(r.status)) byStatus[r.status]++; });
+
+  document.getElementById('card-count').textContent      = fmtN(filteredData.length);
+  document.getElementById('card-clients').textContent    = fmtN(byStatus.C);
+  document.getElementById('card-prospects').textContent  = fmtN(byStatus.P);
+  document.getElementById('card-former').textContent     = fmtN(byStatus.F);
+  document.getElementById('card-notprospect').textContent = fmtN(byStatus.N);
+}
+
+// ── Table ─────────────────────────────────────────────────────────
+function renderTable() {
+  document.getElementById('report-title').textContent = 'Client Report (' + filteredData.length + ' clients)';
+
+  const sorted = filteredData.slice().sort(function(a,b) {
+    let av, bv;
+    if (sortCol === 'last_name') {
+      av = (a.last_name||'') + '|' + (a.first_name||'');
+      bv = (b.last_name||'') + '|' + (b.first_name||'');
+    } else {
+      av = a[sortCol] || ''; bv = b[sortCol] || '';
+    }
+    if (av < bv) return -1*sortDir;
+    if (av > bv) return  1*sortDir;
+    // secondary sort: last name, then first name, for stable alphabetical order
+    const an = (a.last_name||'') + '|' + (a.first_name||'');
+    const bn = (b.last_name||'') + '|' + (b.first_name||'');
+    if (an < bn) return -1;
+    if (an > bn) return 1;
+    return 0;
+  });
+
+  const tbody = document.getElementById('main-body');
+  tbody.innerHTML = '';
+  if (!sorted.length) { tbody.innerHTML = '<tr><td colspan="10" class="msg">No clients found.</td></tr>'; return; }
+
+  sorted.forEach(function(r) {
+    const methods = contactMethods(r);
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + ((r.last_name||'') + (r.last_name && r.first_name ? ', ' : '') + (r.first_name||'')).trim() + '</td>' +
+      '<td>' + (STATUS_LABELS[r.status] || '—') + '</td>' +
+      '<td>' + (r.city||'—') + '</td>' +
+      '<td>' + (r.state||'—') + '</td>' +
+      '<td>' + (r.zip||'—') + '</td>' +
+      '<td>' + (r.county||'—') + '</td>' +
+      '<td>' + fmtDate(r.dob) + '</td>' +
+      '<td>' + fmtDate(r.client_since) + '</td>' +
+      '<td>' + (methods.length ? methods.join(', ') : '—') + '</td>' +
+      '<td>' + (r.cell_phone||'—') + '</td>';
+    tbody.appendChild(tr);
+  });
+
+  const ttr = document.createElement('tr'); ttr.className = 'total-row';
+  ttr.innerHTML = '<td colspan="10">TOTAL — ' + sorted.length + ' clients</td>';
+  tbody.appendChild(ttr);
+}
+
+function sort(col) {
+  if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = 1; }
+  renderTable();
+}
+
+// ── Password gate ────────────────────────────────────────────────
+function checkPassword() {
+  const entered = window.prompt('');
+  return entered === 'Pottsie';
+}
+
+// ── Print ─────────────────────────────────────────────────────────
+function printReport(orientation) {
+  if (!checkPassword()) return;
+  let styleEl = document.getElementById('print-page-style');
+  if (!styleEl) { styleEl = document.createElement('style'); styleEl.id='print-page-style'; document.head.appendChild(styleEl); }
+  styleEl.textContent = '@page { size: letter ' + orientation + '; margin: 0.75in; }';
+  window.print();
+}
+
+// ── Export Excel ──────────────────────────────────────────────────
+function exportExcel() {
+  if (!checkPassword()) return;
+  const header = ['Client Name','Status','City','State','Zip','County','Date of Birth','Client Since','Method of Contact','Cell Phone'];
+  const rows = filteredData.slice().sort(function(a,b) {
+    const an = (a.last_name||'') + '|' + (a.first_name||'');
+    const bn = (b.last_name||'') + '|' + (b.first_name||'');
+    return an < bn ? -1 : an > bn ? 1 : 0;
+  }).map(function(r) {
+    const methods = contactMethods(r);
+    return [
+      ((r.last_name||'') + (r.last_name && r.first_name ? ', ' : '') + (r.first_name||'')).trim(),
+      STATUS_LABELS[r.status] || '',
+      r.city || '', r.state || '', r.zip || '', r.county || '',
+      fmtDate(r.dob), fmtDate(r.client_since),
+      methods.join(', '), r.cell_phone || ''
+    ];
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([header].concat(rows));
+  ws['!cols'] = [22,14,14,8,10,16,14,14,26,14].map(function(w){return{wch:w};});
+  XLSX.utils.book_append_sheet(wb, ws, 'Client Report');
+
+  const today = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, 'BluegrassMedicare_Client_Report_' + today + '.xlsx');
+}
+
+// ── Events ────────────────────────────────────────────────────────
+document.getElementById('btn-run').addEventListener('click', runReport);
+document.getElementById('btn-export').addEventListener('click', exportExcel);
+document.getElementById('btn-reset').addEventListener('click', function() {
+  ['filter-client','filter-zip','filter-dob-from','filter-dob-to','filter-since-from','filter-since-to'].forEach(function(id){
+    document.getElementById(id).value = '';
+  });
+  ['filter-status','filter-city','filter-state','filter-county','filter-contact-method'].forEach(function(id){
+    document.getElementById(id).value = '';
+  });
+  runReport();
+});
+
+// ── Init ──────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
