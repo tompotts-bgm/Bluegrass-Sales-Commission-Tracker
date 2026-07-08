@@ -72,6 +72,7 @@ button.secondary:hover { background: #e3f2fd; }
 .chart-card h3 { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 12px; }
 .chart-wrap { max-width: 340px; margin: 0 auto; position: relative; height: 260px; }
 .chart-wrap-bar { max-width: 520px; margin: 0 auto; position: relative; height: 320px; }
+.chart-wrap-vbar { max-width: 640px; margin: 0 auto; position: relative; height: 320px; }
 .chart-controls { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 1rem; flex-wrap: wrap; }
 .chart-controls .filter-group select { min-width: 180px; }
 .chart-note { font-size: 13px; color: #888; text-align: center; padding: 1rem; }
@@ -244,16 +245,12 @@ footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; pad
   </div>
 
   <div class="chart-card">
-    <h3>Clients by Status</h3>
-    <div class="chart-wrap"><canvas id="status-chart"></canvas></div>
-  </div>
-
-  <div class="chart-card">
     <h3>Additional breakdown</h3>
     <div class="chart-controls">
       <div class="filter-group">
         <label>CHART BY</label>
         <select id="chart-field">
+          <option value="status">Status</option>
           <option value="city">City</option>
           <option value="state">State</option>
           <option value="county">County</option>
@@ -468,7 +465,6 @@ function runReport() {
 }
 
 // ── Cards ─────────────────────────────────────────────────────────
-let statusChart = null;
 function renderCards() {
   const byStatus = { C: 0, P: 0, F: 0, N: 0 };
   filteredData.forEach(function(r) { if (byStatus.hasOwnProperty(r.status)) byStatus[r.status]++; });
@@ -478,54 +474,17 @@ function renderCards() {
   document.getElementById('card-prospects').textContent  = fmtN(byStatus.P);
   document.getElementById('card-former').textContent     = fmtN(byStatus.F);
   document.getElementById('card-notprospect').textContent = fmtN(byStatus.N);
-
-  renderStatusChart(byStatus);
 }
 
-function renderStatusChart(byStatus) {
-  if (typeof Chart === 'undefined') {
-    document.getElementById('status-chart').outerHTML =
-      '<p style="font-size:13px;color:#c62828;text-align:center;padding:1rem;">⚠️ Chart library failed to load — the chart can\'t display, but the report data above is unaffected. This is usually a network/CDN block; try a hard refresh.</p>';
-    return;
-  }
-  const ctx = document.getElementById('status-chart');
-  const labels = ['Client', 'Prospect', 'Former Client', 'Not a Prospect'];
-  const data   = [byStatus.C, byStatus.P, byStatus.F, byStatus.N];
-  const colors = ['#2B4899', '#6DB33F', '#f57f17', '#b0bec5'];
-
-  if (statusChart) { statusChart.data.datasets[0].data = data; statusChart.update(); return; }
-
-  statusChart = new Chart(ctx, {
-    type: 'pie',
-    data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderColor: '#fff', borderWidth: 2 }] },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'bottom', labels: { font: { family: 'Arial', size: 12 } } },
-        tooltip: {
-          callbacks: {
-            label: function(ctx) {
-              const total = ctx.dataset.data.reduce((a,b) => a+b, 0);
-              const pct = total ? Math.round(ctx.parsed / total * 100) : 0;
-              return ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)';
-            }
-          }
-        }
-      }
-    }
-  });
-}
-
-// ── Additional breakdown chart (City / State / County / Method of Contact) ──
+// ── Additional breakdown chart (Status / City / State / County / Method of Contact) ──
 const CHART_FIELD_FILTER_IDS = {
+  status: 'filter-status',
   city: 'filter-city',
   state: 'filter-state',
   county: 'filter-county',
   contact_method: 'filter-contact-method'
 };
-const CHART_FIELD_LABELS = { city: 'City', state: 'State', county: 'County', contact_method: 'Method of Contact' };
-const CHART_PALETTE = ['#2B4899','#6DB33F','#f57f17','#b0bec5','#8e24aa','#00838f','#c62828','#5d4037','#455a64','#ad1457'];
+const CHART_FIELD_LABELS = { status: 'Status', city: 'City', state: 'State', county: 'County', contact_method: 'Method of Contact' };
 let dynamicChart = null;
 
 function createDynamicChart() {
@@ -556,21 +515,21 @@ function createDynamicChart() {
   if (field === 'contact_method') {
     container.innerHTML = '<div class="chart-wrap-bar"><canvas id="dynamic-chart-canvas"></canvas></div>';
     renderContactMethodChart();
-  } else {
+  } else if (field === 'status') {
     container.innerHTML = '<div class="chart-wrap"><canvas id="dynamic-chart-canvas"></canvas></div>';
-    renderCategoryChart(field);
+    renderStatusPieChart();
+  } else {
+    container.innerHTML = '<div class="chart-wrap-vbar"><canvas id="dynamic-chart-canvas"></canvas></div>';
+    renderVerticalBarChart(field);
   }
 }
 
-function renderCategoryChart(field) {
-  const counts = {};
-  filteredData.forEach(function(r) {
-    const v = r[field] || 'Unspecified';
-    counts[v] = (counts[v] || 0) + 1;
-  });
-  const labels = Object.keys(counts).sort();
-  const data = labels.map(function(l) { return counts[l]; });
-  const colors = labels.map(function(_, i) { return CHART_PALETTE[i % CHART_PALETTE.length]; });
+function renderStatusPieChart() {
+  const counts = { C: 0, P: 0, F: 0, N: 0 };
+  filteredData.forEach(function(r) { if (counts.hasOwnProperty(r.status)) counts[r.status]++; });
+  const labels = ['Client', 'Prospect', 'Former Client', 'Not a Prospect'];
+  const data = [counts.C, counts.P, counts.F, counts.N];
+  const colors = ['#2B4899', '#6DB33F', '#f57f17', '#b0bec5'];
 
   const ctx = document.getElementById('dynamic-chart-canvas');
   dynamicChart = new Chart(ctx, {
@@ -590,6 +549,33 @@ function renderCategoryChart(field) {
             }
           }
         }
+      }
+    }
+  });
+}
+
+function renderVerticalBarChart(field) {
+  const counts = {};
+  filteredData.forEach(function(r) {
+    const v = r[field] || 'Unspecified';
+    counts[v] = (counts[v] || 0) + 1;
+  });
+  // Sort by count descending so the most common values read first
+  const entries = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; });
+  const labels = entries.map(function(e) { return e[0]; });
+  const data = entries.map(function(e) { return e[1]; });
+
+  const ctx = document.getElementById('dynamic-chart-canvas');
+  dynamicChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ label: 'Clients', data: data, backgroundColor: '#2B4899' }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0 } },
+        x: { ticks: { autoSkip: false, maxRotation: 60, minRotation: 0 } }
       }
     }
   });
