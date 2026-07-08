@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Client Report — BluegrassMedicare LLC</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* ── Base ─────────────────────────────────────────────────────── */
@@ -51,6 +52,9 @@ button.secondary:hover { background: #e3f2fd; }
 
 /* ── Summary cards ───────────────────────────────────────────── */
 .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+.chart-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.25rem; }
+.chart-card h3 { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 12px; }
+.chart-wrap { max-width: 340px; margin: 0 auto; }
 .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 1rem 1.25rem; }
 .card-label { font-size: 11px; font-weight: 700; color: #888; letter-spacing: 0.5px; margin-bottom: 4px; }
 .card-value { font-size: 21px; font-weight: 700; color: #1a1a2e; }
@@ -86,7 +90,7 @@ footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; pad
 @media print {
   body { background: #fff; padding: 0; font-size: 11px; }
   .container { max-width: 100%; }
-  .nav, .filters, .summary-cards, .btn-row,
+  .nav, .filters, .summary-cards, .btn-row, .chart-card,
   #db-status, footer, .table-header-right { display: none !important; }
 
   #print-header {
@@ -217,6 +221,11 @@ footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; pad
     <div class="card"><div class="card-label">PROSPECTS</div><div class="card-value" id="card-prospects">—</div><div class="card-sub">status: Prospect</div></div>
     <div class="card"><div class="card-label">FORMER CLIENTS</div><div class="card-value" id="card-former">—</div><div class="card-sub">status: Former Client</div></div>
     <div class="card"><div class="card-label">NOT A PROSPECT</div><div class="card-value" id="card-notprospect">—</div><div class="card-sub">status: Not a Prospect</div></div>
+  </div>
+
+  <div class="chart-card">
+    <h3>Clients by Status</h3>
+    <div class="chart-wrap"><canvas id="status-chart"></canvas></div>
   </div>
 
   <!-- ── Report table ── -->
@@ -400,6 +409,7 @@ function runReport() {
 }
 
 // ── Cards ─────────────────────────────────────────────────────────
+let statusChart = null;
 function renderCards() {
   const byStatus = { C: 0, P: 0, F: 0, N: 0 };
   filteredData.forEach(function(r) { if (byStatus.hasOwnProperty(r.status)) byStatus[r.status]++; });
@@ -409,6 +419,37 @@ function renderCards() {
   document.getElementById('card-prospects').textContent  = fmtN(byStatus.P);
   document.getElementById('card-former').textContent     = fmtN(byStatus.F);
   document.getElementById('card-notprospect').textContent = fmtN(byStatus.N);
+
+  renderStatusChart(byStatus);
+}
+
+function renderStatusChart(byStatus) {
+  const ctx = document.getElementById('status-chart');
+  const labels = ['Client', 'Prospect', 'Former Client', 'Not a Prospect'];
+  const data   = [byStatus.C, byStatus.P, byStatus.F, byStatus.N];
+  const colors = ['#2B4899', '#6DB33F', '#f57f17', '#b0bec5'];
+
+  if (statusChart) { statusChart.data.datasets[0].data = data; statusChart.update(); return; }
+
+  statusChart = new Chart(ctx, {
+    type: 'pie',
+    data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderColor: '#fff', borderWidth: 2 }] },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { family: 'Arial', size: 12 } } },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const total = ctx.dataset.data.reduce((a,b) => a+b, 0);
+              const pct = total ? Math.round(ctx.parsed / total * 100) : 0;
+              return ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)';
+            }
+          }
+        }
+      }
+    }
+  });
 }
 
 // ── Table ─────────────────────────────────────────────────────────
