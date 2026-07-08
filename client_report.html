@@ -71,6 +71,10 @@ button.secondary:hover { background: #e3f2fd; }
 .chart-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.25rem; }
 .chart-card h3 { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 12px; }
 .chart-wrap { max-width: 340px; margin: 0 auto; position: relative; height: 260px; }
+.chart-wrap-bar { max-width: 520px; margin: 0 auto; position: relative; height: 320px; }
+.chart-controls { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 1rem; flex-wrap: wrap; }
+.chart-controls .filter-group select { min-width: 180px; }
+.chart-note { font-size: 13px; color: #888; text-align: center; padding: 1rem; }
 .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 1rem 1.25rem; }
 .card-label { font-size: 11px; font-weight: 700; color: #888; letter-spacing: 0.5px; margin-bottom: 4px; }
 .card-value { font-size: 21px; font-weight: 700; color: #1a1a2e; }
@@ -242,6 +246,25 @@ footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; pad
   <div class="chart-card">
     <h3>Clients by Status</h3>
     <div class="chart-wrap"><canvas id="status-chart"></canvas></div>
+  </div>
+
+  <div class="chart-card">
+    <h3>Additional breakdown</h3>
+    <div class="chart-controls">
+      <div class="filter-group">
+        <label>CHART BY</label>
+        <select id="chart-field">
+          <option value="city">City</option>
+          <option value="state">State</option>
+          <option value="county">County</option>
+          <option value="contact_method">Method of Contact</option>
+        </select>
+      </div>
+      <button class="secondary" id="btn-create-chart">Create Chart</button>
+    </div>
+    <div id="dynamic-chart-container">
+      <p class="chart-note">Pick a field and click Create Chart to see a breakdown.</p>
+    </div>
   </div>
 
   <!-- ── Report table ── -->
@@ -494,6 +517,107 @@ function renderStatusChart(byStatus) {
   });
 }
 
+// ── Additional breakdown chart (City / State / County / Method of Contact) ──
+const CHART_FIELD_FILTER_IDS = {
+  city: 'filter-city',
+  state: 'filter-state',
+  county: 'filter-county',
+  contact_method: 'filter-contact-method'
+};
+const CHART_FIELD_LABELS = { city: 'City', state: 'State', county: 'County', contact_method: 'Method of Contact' };
+const CHART_PALETTE = ['#2B4899','#6DB33F','#f57f17','#b0bec5','#8e24aa','#00838f','#c62828','#5d4037','#455a64','#ad1457'];
+let dynamicChart = null;
+
+function createDynamicChart() {
+  applyFilters(); // use current filter selections, independent of whether Run Report was clicked
+  const field = document.getElementById('chart-field').value;
+  const filterId = CHART_FIELD_FILTER_IDS[field];
+  const filterVal = document.getElementById(filterId).value;
+  const container = document.getElementById('dynamic-chart-container');
+
+  if (dynamicChart) { dynamicChart.destroy(); dynamicChart = null; }
+
+  if (filterVal) {
+    container.innerHTML = '<p class="chart-note">This chart is disabled because your ' + CHART_FIELD_LABELS[field] +
+      ' filter is narrowed to a single value. Set ' + CHART_FIELD_LABELS[field] + ' to "All" to see this breakdown.</p>';
+    return;
+  }
+
+  if (!filteredData.length) {
+    container.innerHTML = '<p class="chart-note">No matching records to chart.</p>';
+    return;
+  }
+
+  if (typeof Chart === 'undefined') {
+    container.innerHTML = '<p class="chart-note">⚠️ Chart library failed to load — try a hard refresh.</p>';
+    return;
+  }
+
+  if (field === 'contact_method') {
+    container.innerHTML = '<div class="chart-wrap-bar"><canvas id="dynamic-chart-canvas"></canvas></div>';
+    renderContactMethodChart();
+  } else {
+    container.innerHTML = '<div class="chart-wrap"><canvas id="dynamic-chart-canvas"></canvas></div>';
+    renderCategoryChart(field);
+  }
+}
+
+function renderCategoryChart(field) {
+  const counts = {};
+  filteredData.forEach(function(r) {
+    const v = r[field] || 'Unspecified';
+    counts[v] = (counts[v] || 0) + 1;
+  });
+  const labels = Object.keys(counts).sort();
+  const data = labels.map(function(l) { return counts[l]; });
+  const colors = labels.map(function(_, i) { return CHART_PALETTE[i % CHART_PALETTE.length]; });
+
+  const ctx = document.getElementById('dynamic-chart-canvas');
+  dynamicChart = new Chart(ctx, {
+    type: 'pie',
+    data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderColor: '#fff', borderWidth: 2 }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { family: 'Arial', size: 12 } } },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const total = ctx.dataset.data.reduce(function(a,b) { return a+b; }, 0);
+              const pct = total ? Math.round(ctx.parsed / total * 100) : 0;
+              return ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)';
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderContactMethodChart() {
+  const counts = {};
+  Object.keys(CONTACT_LABELS).forEach(function(k) { counts[CONTACT_LABELS[k]] = 0; });
+  filteredData.forEach(function(r) {
+    Object.keys(CONTACT_LABELS).forEach(function(k) { if (r[k]) counts[CONTACT_LABELS[k]]++; });
+  });
+  const labels = Object.keys(counts);
+  const data = labels.map(function(l) { return counts[l]; });
+
+  const ctx = document.getElementById('dynamic-chart-canvas');
+  dynamicChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ label: 'Clients', data: data, backgroundColor: '#2B4899' }] },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+}
+
 // ── Table ─────────────────────────────────────────────────────────
 function renderTable() {
   document.getElementById('report-title').textContent = 'Client Report (' + filteredData.length + ' clients)';
@@ -592,6 +716,7 @@ function exportExcel() {
 
 // ── Events ────────────────────────────────────────────────────────
 document.getElementById('btn-run').addEventListener('click', runReport);
+document.getElementById('btn-create-chart').addEventListener('click', createDynamicChart);
 document.getElementById('btn-export').addEventListener('click', exportExcel);
 document.getElementById('btn-reset').addEventListener('click', function() {
   ['filter-client','filter-zip','filter-dob-from','filter-dob-to','filter-since-from','filter-since-to'].forEach(function(id){
