@@ -159,6 +159,32 @@ function fmtAmt(v) {
   return '$' + n.toFixed(2);
 }
 
+const RECORD_TYPE_LABELS = {
+  originating_commission: 'Originating Commission',
+  monthly_renewal:        'Monthly Renewal',
+  originating_override:   'Originating Override',
+  monthly_override:       'Monthly Override'
+};
+
+// Resolves the correct label + amount for a transaction row, using
+// record_type when present, and falling back to a field-based guess
+// for older rows saved before record_type existed.
+function resolveRecordInfo(r) {
+  let type = r.record_type;
+  if (!type) {
+    if (r.orig_commission   !== null && r.orig_commission   !== undefined && parseFloat(r.orig_commission)   !== 0) type = 'originating_commission';
+    else if (r.monthly_renewal   !== null && r.monthly_renewal   !== undefined && parseFloat(r.monthly_renewal)   !== 0) type = 'monthly_renewal';
+    else if (r.purchase_override !== null && r.purchase_override !== undefined && parseFloat(r.purchase_override) !== 0) type = 'originating_override';
+    else if (r.monthly_override  !== null && r.monthly_override  !== undefined && parseFloat(r.monthly_override)  !== 0) type = 'monthly_override';
+  }
+  const amount =
+    parseFloat(r.orig_commission)   ||
+    parseFloat(r.monthly_renewal)   ||
+    parseFloat(r.purchase_override) ||
+    parseFloat(r.monthly_override)  || 0;
+  return { label: RECORD_TYPE_LABELS[type] || 'Unknown', amount };
+}
+
 function setStatus(msg, isError) {
   const el = document.getElementById('status-msg');
   el.textContent = msg;
@@ -167,7 +193,7 @@ function setStatus(msg, isError) {
 
 async function searchTransactions(name) {
   const q = encodeURIComponent(`%${name}%`);
-  const url = `${SUPABASE_URL}/rest/v1/transactions?commission_matched=is.false&last_name=ilike.${q}&select=id,first_name,last_name,company,effective_date,orig_commission,monthly_renewal`;
+  const url = `${SUPABASE_URL}/rest/v1/transactions?commission_matched=is.false&last_name=ilike.${q}&select=id,first_name,last_name,company,effective_date,record_type,orig_commission,monthly_renewal,purchase_override,monthly_override`;
   const resp = await fetch(url, { headers: HEADERS });
   if (!resp.ok) throw new Error('Transactions ' + resp.status + ': ' + await resp.text());
   return await resp.json();
@@ -193,14 +219,14 @@ function renderTransactions(records) {
     const div = document.createElement('div');
     div.className = 'record-card';
     const name = (r.last_name||'') + (r.last_name && r.first_name ? ', ' : '') + (r.first_name||'');
+    const info = resolveRecordInfo(r);
     div.innerHTML = `
-      <div class="card-type">Transaction #${r.id}</div>
+      <div class="card-type">Transaction #${r.id} &nbsp;·&nbsp; ${info.label}</div>
       <div class="card-name">${name}</div>
       <div class="card-row"><span class="lbl">Company</span><span class="val">${r.company||'—'}</span></div>
       <div class="card-row"><span class="lbl">Effective Date</span><span class="val">${fmtDate(r.effective_date)}</span></div>
       <div class="card-row"><span class="lbl">Pay Date</span><span class="val">${calcPayDate(r.effective_date)}</span></div>
-      <div class="card-row"><span class="lbl">Orig Commission</span><span class="val amount">${fmtAmt(r.orig_commission)}</span></div>
-      <div class="card-row"><span class="lbl">Monthly Renewal</span><span class="val amount">${fmtAmt(r.monthly_renewal)}</span></div>
+      <div class="card-row"><span class="lbl">Amount</span><span class="val amount">${fmtAmt(info.amount)}</span></div>
     `;
     div.addEventListener('click', () => {
       if (selectedTx) selectedTx.el.classList.remove('selected-tx');
