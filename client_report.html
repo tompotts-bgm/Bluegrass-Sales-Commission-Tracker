@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Client Report — BluegrassMedicare LLC</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" onerror="this.onerror=null;document.write('<script src=\'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js\'><\/script>')"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* ── Base ─────────────────────────────────────────────────────── */
@@ -445,7 +445,8 @@ function renderCards() {
 
 function renderStatusChart(byStatus) {
   if (typeof Chart === 'undefined') {
-    console.warn('Chart.js did not load — skipping chart, table will still render.');
+    document.getElementById('status-chart').outerHTML =
+      '<p style="font-size:13px;color:#c62828;text-align:center;padding:1rem;">⚠️ Chart library failed to load — the chart can\'t display, but the report data above is unaffected. This is usually a network/CDN block; try a hard refresh.</p>';
     return;
   }
   const ctx = document.getElementById('status-chart');
