@@ -298,31 +298,51 @@ function setDbStatus(msg, cls) {
   el.textContent = msg; el.className = cls; el.style.display = 'block';
 }
 
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(label + ' timed out after ' + (ms/1000) + 's — check your internet connection or Supabase project status')), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 // ── Load (paginated) ────────────────────────────────────────────
 async function loadData() {
   try {
-    const { error } = await db.from('clients').select('id').limit(1);
+    const { error } = await withTimeout(db.from('clients').select('id').limit(1), 15000, 'Connection check');
     if (error) throw error;
-    setDbStatus('✅ Connected to Supabase', 'ok');
+    setDbStatus('✅ Connected to Supabase — loading client records…', 'ok');
   } catch(e) { setDbStatus('❌ Connection failed: ' + e.message, 'err'); return; }
 
   let all = [];
   const pageSize = 1000;
   let from = 0;
-  while (true) {
-    const { data, error } = await db.from('clients')
-      .select('*')
-      .order('last_name', { ascending: true })
-      .range(from, from + pageSize - 1);
-    if (error) { setDbStatus('❌ Failed to load data: ' + error.message, 'err'); return; }
-    all = all.concat(data || []);
-    if (!data || data.length < pageSize) break;
-    from += pageSize;
+  try {
+    while (true) {
+      setDbStatus('⏳ Loading client records… (' + all.length + ' loaded so far)', 'ok');
+      const { data, error } = await withTimeout(
+        db.from('clients').select('*').order('last_name', { ascending: true }).range(from, from + pageSize - 1),
+        15000, 'Client data fetch'
+      );
+      if (error) { setDbStatus('❌ Failed to load data: ' + error.message, 'err'); return; }
+      all = all.concat(data || []);
+      if (!data || data.length < pageSize) break;
+      from += pageSize;
+    }
+  } catch(e) {
+    setDbStatus('❌ Error while loading records: ' + e.message, 'err');
+    return;
   }
 
   allData = all;
-  populateFilters();
-  runReport();
+
+  try {
+    populateFilters();
+    runReport();
+    setDbStatus('✅ Loaded ' + allData.length + ' client records', 'ok');
+  } catch(e) {
+    setDbStatus('❌ Loaded ' + allData.length + ' records, but hit an error rendering the report: ' + e.message, 'err');
+  }
 }
 
 function populateFilters() {
@@ -424,6 +444,10 @@ function renderCards() {
 }
 
 function renderStatusChart(byStatus) {
+  if (typeof Chart === 'undefined') {
+    console.warn('Chart.js did not load — skipping chart, table will still render.');
+    return;
+  }
   const ctx = document.getElementById('status-chart');
   const labels = ['Client', 'Prospect', 'Former Client', 'Not a Prospect'];
   const data   = [byStatus.C, byStatus.P, byStatus.F, byStatus.N];
