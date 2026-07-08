@@ -492,8 +492,15 @@ function sort(col) {
   renderTable();
 }
 
+// ── Password gate ────────────────────────────────────────────────
+function checkPassword() {
+  const entered = window.prompt('');
+  return entered === 'Pottsie';
+}
+
 // ── Print ─────────────────────────────────────────────────────────
 function printReport(orientation) {
+  if (!checkPassword()) return;
   let styleEl = document.getElementById('print-page-style');
   if (!styleEl) { styleEl = document.createElement('style'); styleEl.id='print-page-style'; document.head.appendChild(styleEl); }
   styleEl.textContent = '@page { size: letter ' + orientation + '; margin: 0.75in; }';
@@ -502,6 +509,7 @@ function printReport(orientation) {
 
 // ── Export Excel ──────────────────────────────────────────────────
 function exportExcel() {
+  if (!checkPassword()) return;
   const header = ['Client Name','Broker','Company','Product Type','Date Written','Effective Date','New Client','New to Medicare','Zip','Orig Commission'];
   const rows = filteredData.map(function(r) {
     return [
