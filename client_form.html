@@ -246,6 +246,7 @@
           <div class="radio-row">
             <label class="radio-item"><input type="radio" name="retired" id="retiredY" value="Y" /> Yes</label>
             <label class="radio-item"><input type="radio" name="retired" id="retiredN" value="N" /> No</label>
+            <label class="radio-item"><input type="radio" name="retired" id="retiredU" value="U" /> Unknown</label>
           </div>
         </div>
         <div><label>Company Name</label><input type="text" id="fldCompany" placeholder="Current or former employer" /></div>
@@ -332,7 +333,12 @@
       part_b_date:         document.getElementById('fldPartB').value || null,
       client_since:        document.getElementById('fldClientSince').value || null,
       spouse_name:         document.getElementById('fldSpouse').value.trim() || null,
-      retired:             document.querySelector('input[name=retired]:checked')?.value === 'Y',
+      retired:             (function() {
+                              var v = document.querySelector('input[name=retired]:checked')?.value;
+                              if (v === 'Y') return true;
+                              if (v === 'N') return false;
+                              return null; // Unknown, or nothing selected
+                            })(),
       work_company:        document.getElementById('fldCompany').value.trim() || null,
       notes:               document.getElementById('fldNotes').value.trim() || null
     };
@@ -368,9 +374,9 @@
     document.getElementById('fldPartB').value           = r.part_b_date || '';
     document.getElementById('fldClientSince').value     = r.client_since || '';
     document.getElementById('fldSpouse').value          = r.spouse_name || '';
-    if (r.retired !== null) {
-      document.getElementById(r.retired ? 'retiredY' : 'retiredN').checked = true;
-    }
+    if (r.retired === true) document.getElementById('retiredY').checked = true;
+    else if (r.retired === false) document.getElementById('retiredN').checked = true;
+    else document.getElementById('retiredU').checked = true;
     document.getElementById('fldCompany').value         = r.work_company || '';
     document.getElementById('fldNotes').value           = r.notes || '';
   }
