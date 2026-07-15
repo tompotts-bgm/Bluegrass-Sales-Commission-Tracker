@@ -20,6 +20,19 @@
   }
   input:disabled, textarea:disabled { background: #f0f0f0; color: #777; }
   #search-status { font-size: 13px; color: #b71c1c; margin: 10px 0; min-height: 18px; }
+  #client-results { margin: 12px 0; display: none; }
+  #client-results .hint { font-size: 12px; color: #777; margin-bottom: 8px; }
+  .client-option { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px; cursor: pointer; transition: background 0.1s, border-color 0.1s; }
+  .client-option:hover { background: #e8f4fd; border-color: #2B4899; }
+  .client-option .co-name { font-size: 14px; font-weight: 700; color: #1a1a2e; }
+  .client-option .co-address { font-size: 12px; color: #666; margin-top: 2px; }
+  #selected-client-box { display: none; background: #e8f4fd; border: 1px solid #2B4899; border-radius: 8px; padding: 12px 16px; margin: 12px 0; }
+  #selected-client-box .sc-name { font-size: 14px; font-weight: 700; color: #2B4899; }
+  #selected-client-box .sc-address { font-size: 12px; color: #555; margin-top: 2px; }
+  #selected-client-box button { margin-top: 8px; }
+  #record-type-box { display: none; margin: 12px 0; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #c5dfa8; border-top-color: #2B4899; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   /* ---- Buttons ---- */
   button { font-size: 13px; padding: 10px 20px; border-radius: 7px; border: 1px solid #ccc; background: #fff; color: #333; cursor: pointer; font-weight: 600; margin-right: 8px; margin-top: 8px; }
@@ -54,16 +67,6 @@
   <!-- ================= SEARCH SCREEN ================= -->
   <div id="search-screen">
     <div class="field-row">
-      <div>
-        <label>First Name</label>
-        <input type="text" id="q-first-name" placeholder="e.g. John">
-      </div>
-      <div>
-        <label>Last Name</label>
-        <input type="text" id="q-last-name" placeholder="e.g. Smith">
-      </div>
-    </div>
-    <div class="field-row">
       <div class="full" style="grid-column: 1 / -1;">
         <label>Record Type</label>
         <select id="q-record-type">
@@ -74,7 +77,32 @@
         </select>
       </div>
     </div>
-    <button class="primary" id="btn-search">Search</button>
+
+    <div id="selected-client-box">
+      <div class="sc-name" id="sc-name"></div>
+      <div class="sc-address" id="sc-address"></div>
+      <button id="btn-change-client">Change Client</button>
+    </div>
+
+    <div id="client-search-fields">
+      <div class="field-row">
+        <div>
+          <label>First Name</label>
+          <input type="text" id="q-first-name" placeholder="e.g. John">
+        </div>
+        <div>
+          <label>Last Name</label>
+          <input type="text" id="q-last-name" placeholder="e.g. Smith">
+        </div>
+      </div>
+      <button class="primary" id="btn-find-client">Find Client</button>
+    </div>
+
+    <div id="client-results">
+      <div class="hint">Multiple clients matched — select the correct one:</div>
+      <div id="client-results-list"></div>
+    </div>
+
     <div id="search-status"></div>
   </div>
 
@@ -166,22 +194,103 @@ const formGrid = document.getElementById('form-grid');
 const saveMessage = document.getElementById('save-message');
 const btnPrev = document.getElementById('btn-prev');
 const btnNext = document.getElementById('btn-next');
+const clientResultsBox = document.getElementById('client-results');
+const clientResultsList = document.getElementById('client-results-list');
+const selectedClientBox = document.getElementById('selected-client-box');
+const clientSearchFields = document.getElementById('client-search-fields');
 
-/* ---------------- Search ---------------- */
-document.getElementById('btn-search').addEventListener('click', async () => {
+let selectedClient = null;
+
+function formatAddress(c) {
+  const parts = [c.address, c.city, c.state, c.zip].filter(Boolean);
+  return parts.join(', ');
+}
+
+/* ---------------- Step 1: Find Client ---------------- */
+document.getElementById('btn-find-client').addEventListener('click', async () => {
   const firstName = document.getElementById('q-first-name').value.trim();
   const lastName = document.getElementById('q-last-name').value.trim();
-  const recordType = document.getElementById('q-record-type').value;
 
-  searchStatus.textContent = 'Searching...';
-  searchStatus.style.color = '#666';
+  if (!firstName && !lastName) {
+    searchStatus.textContent = 'Enter a first or last name to search.';
+    searchStatus.style.color = '#b71c1c';
+    return;
+  }
 
-  let query = sb.from('transactions').select('*').eq('record_type', recordType);
+  searchStatus.textContent = '';
+  clientResultsBox.style.display = 'none';
+  clientResultsList.innerHTML = '';
+
+  let query = sb.from('clients').select('*');
   if (firstName) query = query.ilike('first_name', `%${firstName}%`);
   if (lastName) query = query.ilike('last_name', `%${lastName}%`);
-  query = query.order('effective_date', { ascending: true, nullsFirst: false });
+  query = query.order('last_name', { ascending: true }).order('first_name', { ascending: true });
 
   const { data, error } = await query;
+
+  if (error) {
+    searchStatus.textContent = 'Client search error: ' + error.message;
+    searchStatus.style.color = '#b71c1c';
+    return;
+  }
+  if (!data || data.length === 0) {
+    searchStatus.textContent = 'No matching clients found.';
+    searchStatus.style.color = '#b71c1c';
+    return;
+  }
+  if (data.length === 1) {
+    pickClient(data[0]);
+    return;
+  }
+
+  data.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'client-option';
+    div.innerHTML = `<div class="co-name">${c.last_name ?? ''}, ${c.first_name ?? ''}</div><div class="co-address">${formatAddress(c) || 'No address on file'}</div>`;
+    div.addEventListener('click', () => pickClient(c));
+    clientResultsList.appendChild(div);
+  });
+  clientResultsBox.style.display = 'block';
+});
+
+function pickClient(client) {
+  selectedClient = client;
+  clientResultsBox.style.display = 'none';
+  clientSearchFields.style.display = 'none';
+  document.getElementById('sc-name').textContent = `${client.last_name ?? ''}, ${client.first_name ?? ''}`;
+  document.getElementById('sc-address').textContent = formatAddress(client) || 'No address on file';
+  selectedClientBox.style.display = 'block';
+  searchStatus.textContent = '';
+  runTransactionSearch();
+}
+
+document.getElementById('btn-change-client').addEventListener('click', () => {
+  selectedClient = null;
+  selectedClientBox.style.display = 'none';
+  clientSearchFields.style.display = 'block';
+  document.getElementById('q-first-name').value = '';
+  document.getElementById('q-last-name').value = '';
+  searchStatus.textContent = '';
+});
+
+/* ---------------- Step 2: Find Transactions (auto after client pick, or on record type change) ---------------- */
+document.getElementById('q-record-type').addEventListener('change', () => {
+  if (selectedClient) runTransactionSearch();
+});
+
+async function runTransactionSearch() {
+  if (!selectedClient) return;
+  const recordType = document.getElementById('q-record-type').value;
+
+  searchStatus.innerHTML = '<span class="spinner"></span>Searching transactions...';
+  searchStatus.style.color = '#666';
+
+  const { data, error } = await sb
+    .from('transactions')
+    .select('*')
+    .eq('client_id', selectedClient.id)
+    .eq('record_type', recordType)
+    .order('effective_date', { ascending: true, nullsFirst: false });
 
   if (error) {
     searchStatus.textContent = 'Search error: ' + error.message;
@@ -189,7 +298,7 @@ document.getElementById('btn-search').addEventListener('click', async () => {
     return;
   }
   if (!data || data.length === 0) {
-    searchStatus.textContent = 'No matching records found.';
+    searchStatus.textContent = `No ${recordType.replace(/_/g,' ')} records found for ${selectedClient.first_name} ${selectedClient.last_name}.`;
     searchStatus.style.color = '#b71c1c';
     return;
   }
@@ -198,7 +307,7 @@ document.getElementById('btn-search').addEventListener('click', async () => {
   currentIndex = 0;
   searchStatus.textContent = '';
   showEditor();
-});
+}
 
 /* ---------------- Editor rendering ---------------- */
 function showEditor() {
@@ -211,10 +320,15 @@ function backToSearch() {
   resultSet = [];
   currentIndex = 0;
   formDirty = false;
+  selectedClient = null;
   saveMessage.textContent = '';
   document.getElementById('q-first-name').value = '';
   document.getElementById('q-last-name').value = '';
   searchStatus.textContent = '';
+  selectedClientBox.style.display = 'none';
+  clientSearchFields.style.display = 'block';
+  clientResultsBox.style.display = 'none';
+  clientResultsList.innerHTML = '';
   editorScreen.style.display = 'none';
   searchScreen.style.display = 'block';
 }
