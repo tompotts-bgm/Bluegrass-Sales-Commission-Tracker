@@ -85,14 +85,10 @@
     </div>
 
     <div id="client-search-fields">
-      <div class="field-row">
+      <div class="field-row" style="grid-template-columns: 1fr;">
         <div>
-          <label>First Name</label>
-          <input type="text" id="q-first-name" placeholder="e.g. John">
-        </div>
-        <div>
-          <label>Last Name</label>
-          <input type="text" id="q-last-name" placeholder="e.g. Smith">
+          <label>Search by Client ID or Last Name</label>
+          <input type="text" id="q-search" placeholder="Enter ID or last name…">
         </div>
       </div>
       <button class="primary" id="btn-find-client">Find Client</button>
@@ -104,6 +100,9 @@
     </div>
 
     <div id="search-status"></div>
+    <div class="button-row">
+      <button id="btn-menu-exit">&larr; Exit to Menu</button>
+    </div>
   </div>
 
   <!-- ================= EDITOR SCREEN ================= -->
@@ -215,11 +214,10 @@ function formatAddress(c) {
 
 /* ---------------- Step 1: Find Client ---------------- */
 document.getElementById('btn-find-client').addEventListener('click', async () => {
-  const firstName = document.getElementById('q-first-name').value.trim();
-  const lastName = document.getElementById('q-last-name').value.trim();
+  const term = document.getElementById('q-search').value.trim();
 
-  if (!firstName && !lastName) {
-    searchStatus.textContent = 'Enter a first or last name to search.';
+  if (!term) {
+    searchStatus.textContent = 'Enter a Client ID or last name to search.';
     searchStatus.style.color = '#b71c1c';
     return;
   }
@@ -228,10 +226,11 @@ document.getElementById('btn-find-client').addEventListener('click', async () =>
   clientResultsBox.style.display = 'none';
   clientResultsList.innerHTML = '';
 
-  const params = ['select=*', 'order=last_name.asc,first_name.asc'];
-  if (firstName) params.push('first_name=ilike.*' + encodeURIComponent(firstName) + '*');
-  if (lastName) params.push('last_name=ilike.*' + encodeURIComponent(lastName) + '*');
-  const url = `${SUPABASE_URL}/rest/v1/clients?${params.join('&')}`;
+  const isId = /^\d+$/.test(term);
+  const filterParam = isId
+    ? `id=eq.${term}`
+    : `last_name=ilike.${encodeURIComponent('%' + term + '%')}`;
+  const url = `${SUPABASE_URL}/rest/v1/clients?${filterParam}&select=*&order=last_name.asc,first_name.asc`;
 
   let data;
   try {
@@ -263,6 +262,14 @@ document.getElementById('btn-find-client').addEventListener('click', async () =>
   clientResultsBox.style.display = 'block';
 });
 
+document.getElementById('q-search').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-find-client').click();
+});
+
+document.getElementById('btn-menu-exit').addEventListener('click', () => {
+  window.location.href = 'index.html';
+});
+
 function pickClient(client) {
   selectedClient = client;
   clientResultsBox.style.display = 'none';
@@ -278,8 +285,7 @@ document.getElementById('btn-change-client').addEventListener('click', () => {
   selectedClient = null;
   selectedClientBox.style.display = 'none';
   clientSearchFields.style.display = 'block';
-  document.getElementById('q-first-name').value = '';
-  document.getElementById('q-last-name').value = '';
+  document.getElementById('q-search').value = '';
   searchStatus.textContent = '';
 });
 
@@ -333,8 +339,7 @@ function backToSearch() {
   formDirty = false;
   selectedClient = null;
   saveMessage.textContent = '';
-  document.getElementById('q-first-name').value = '';
-  document.getElementById('q-last-name').value = '';
+  document.getElementById('q-search').value = '';
   searchStatus.textContent = '';
   selectedClientBox.style.display = 'none';
   clientSearchFields.style.display = 'block';
