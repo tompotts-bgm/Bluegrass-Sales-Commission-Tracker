@@ -56,6 +56,11 @@
   #save-message { font-size: 14px; font-weight: 700; color: #6DB33F; margin: 10px 0; min-height: 20px; }
   hr.section-divider { border: none; border-top: 1px solid #eee; margin: 1rem 0; }
   .button-row { border-top: 1px solid #eee; padding-top: 1rem; margin-top: 1rem; }
+  .cr-table-wrap { border: 1px solid #e0e0e0; border-radius: 8px; overflow: auto; max-height: 320px; }
+  table.cr-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.cr-table th { background: #2B4899; color: #fff; padding: 6px 10px; text-align: left; position: sticky; top: 0; }
+  table.cr-table td { padding: 6px 10px; border-bottom: 1px solid #eee; }
+  table.cr-table tr:nth-child(even) td { background: #f7faf4; }
 </style>
 </head>
 <body>
@@ -179,12 +184,12 @@ const FIELDS = [
   { key: 'commission_matched',     label: 'Commission Matched',        type: 'boolean' },
   { key: 'commission_matched_date',label: 'Commission Matched Date',   type: 'date' },
   { key: 'matched_commission_id',  label: 'Matched Commission ID',     type: 'text' },
-  { key: 'commission_records',     label: 'Commission Records (JSON)', type: 'textarea-readonly' },
+  { key: 'commission_records',     label: 'Commission Records', type: 'commission_records_table' },
   { key: 'created_at',             label: 'Created At',                type: 'readonly' },
   { key: 'updated_at',             label: 'Updated At',                type: 'readonly' },
 ];
 
-const READONLY_TYPES = ['readonly', 'textarea-readonly'];
+const READONLY_TYPES = ['readonly', 'textarea-readonly', 'commission_records_table'];
 
 /* ---------------- State ---------------- */
 let resultSet = [];
@@ -210,6 +215,51 @@ let selectedClient = null;
 function formatAddress(c) {
   const parts = [c.address, c.city, c.state, c.zip].filter(Boolean);
   return parts.join(', ');
+}
+
+function buildCommissionRecordsTable(val) {
+  const wrap = document.createElement('div');
+  if (!val || !Array.isArray(val) || val.length === 0) {
+    wrap.innerHTML = '<div style="font-size:12px;color:#888;">No commission records stored.</div>';
+    return wrap;
+  }
+
+  // Collect every key that appears across all entries, in first-seen order
+  const cols = [];
+  val.forEach(entry => {
+    Object.keys(entry).forEach(k => { if (!cols.includes(k)) cols.push(k); });
+  });
+
+  const tableWrap = document.createElement('div');
+  tableWrap.className = 'cr-table-wrap';
+  const table = document.createElement('table');
+  table.className = 'cr-table';
+
+  const thead = document.createElement('thead');
+  const headRow = document.createElement('tr');
+  cols.forEach(c => {
+    const th = document.createElement('th');
+    th.textContent = c;
+    headRow.appendChild(th);
+  });
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  val.forEach(entry => {
+    const tr = document.createElement('tr');
+    cols.forEach(c => {
+      const td = document.createElement('td');
+      const v = entry[c];
+      td.textContent = (v === null || v === undefined) ? '' : v;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  tableWrap.appendChild(table);
+  wrap.appendChild(tableWrap);
+  return wrap;
 }
 
 /* ---------------- Step 1: Find Client ---------------- */
@@ -393,6 +443,9 @@ function renderRecord() {
       });
       select.addEventListener('change', () => formDirty = true);
       wrap.appendChild(select);
+    } else if (f.type === 'commission_records_table') {
+      wrap.classList.add('full');
+      wrap.appendChild(buildCommissionRecordsTable(val));
     } else if (f.type === 'textarea-readonly') {
       wrap.classList.add('full');
       const ta = document.createElement('textarea');
