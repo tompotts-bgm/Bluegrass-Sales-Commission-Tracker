@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Manual Record Editor</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; color: #222; background: #eef7e8; padding: 2rem; }
@@ -148,13 +147,8 @@ window.addEventListener('error', e => showPageError('Script error: ' + e.message
 
 /* ---------------- Supabase setup ---------------- */
 const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
-let sb;
-try {
-  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-} catch (e) {
-  showPageError('Could not connect to Supabase: ' + e.message);
-}
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
+const HEADERS = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' };
 
 /* ---------------- Field definitions ---------------- */
 // type: text | number | date | boolean | textarea-readonly | readonly
@@ -234,24 +228,21 @@ document.getElementById('btn-find-client').addEventListener('click', async () =>
   clientResultsBox.style.display = 'none';
   clientResultsList.innerHTML = '';
 
-  let query = sb.from('clients').select('*');
-  if (firstName) query = query.ilike('first_name', `%${firstName}%`);
-  if (lastName) query = query.ilike('last_name', `%${lastName}%`);
-  query = query.order('last_name', { ascending: true }).order('first_name', { ascending: true });
+  const params = ['select=*', 'order=last_name.asc,first_name.asc'];
+  if (firstName) params.push('first_name=ilike.*' + encodeURIComponent(firstName) + '*');
+  if (lastName) params.push('last_name=ilike.*' + encodeURIComponent(lastName) + '*');
+  const url = `${SUPABASE_URL}/rest/v1/clients?${params.join('&')}`;
 
-  let data, error;
+  let data;
   try {
-    ({ data, error } = await query);
+    const resp = await fetch(url, { headers: HEADERS });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ': ' + await resp.text());
+    data = await resp.json();
   } catch (e) {
     showPageError('Client search failed: ' + e.message);
     return;
   }
 
-  if (error) {
-    searchStatus.textContent = 'Client search error: ' + error.message;
-    searchStatus.style.color = '#b71c1c';
-    return;
-  }
   if (!data || data.length === 0) {
     searchStatus.textContent = 'No matching clients found.';
     searchStatus.style.color = '#b71c1c';
@@ -304,18 +295,19 @@ async function runTransactionSearch() {
   searchStatus.innerHTML = '<span class="spinner"></span>Searching transactions...';
   searchStatus.style.color = '#666';
 
-  const { data, error } = await sb
-    .from('transactions')
-    .select('*')
-    .eq('client_id', selectedClient.id)
-    .eq('record_type', recordType)
-    .order('effective_date', { ascending: true, nullsFirst: false });
+  const url = `${SUPABASE_URL}/rest/v1/transactions?client_id=eq.${selectedClient.id}&record_type=eq.${encodeURIComponent(recordType)}&select=*&order=effective_date.asc.nullslast`;
 
-  if (error) {
-    searchStatus.textContent = 'Search error: ' + error.message;
-    searchStatus.style.color = '#b71c1c';
+  let data;
+  try {
+    const resp = await fetch(url, { headers: HEADERS });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ': ' + await resp.text());
+    data = await resp.json();
+  } catch (e) {
+    showPageError('Transaction search failed: ' + e.message);
+    searchStatus.textContent = '';
     return;
   }
+
   if (!data || data.length === 0) {
     searchStatus.textContent = `No ${recordType.replace(/_/g,' ')} records found for ${selectedClient.first_name} ${selectedClient.last_name}.`;
     searchStatus.style.color = '#b71c1c';
@@ -464,13 +456,21 @@ async function saveCurrentRecord() {
   const record = resultSet[currentIndex];
   const updates = collectEditableValues();
   saveMessage.textContent = 'Saving Record';
-  const { error } = await sb.from('transactions').update(updates).eq('id', record.id);
-  if (error) {
-    saveMessage.textContent = 'Save failed: ' + error.message;
+  saveMessage.style.color = '#6DB33F';
+
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/transactions?id=eq.${record.id}`, {
+      method: 'PATCH',
+      headers: { ...HEADERS, 'Prefer': 'return=minimal' },
+      body: JSON.stringify(updates)
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ': ' + await resp.text());
+  } catch (e) {
+    saveMessage.textContent = 'Save failed: ' + e.message;
     saveMessage.style.color = '#b71c1c';
     return false;
   }
-  saveMessage.style.color = '#6DB33F';
+
   Object.assign(resultSet[currentIndex], updates);
   formDirty = false;
   return true;
