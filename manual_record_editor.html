@@ -60,6 +60,7 @@
 </style>
 </head>
 <body>
+<div id="error-banner" style="display:none; max-width:900px; margin:0 auto 12px; background:#fdecea; border:1px solid #b71c1c; color:#b71c1c; border-radius:8px; padding:12px 16px; font-family:Arial, sans-serif; font-size:13px; font-weight:600;"></div>
 <div class="container" id="app-container" style="display:none;">
   <h1>Manual Record Editor</h1>
   <p class="sub">Search for a client's transaction rows by name and record type, then step through and edit them one at a time.</p>
@@ -126,6 +127,14 @@
 </div>
 
 <script>
+/* ---------------- On-page error display (no DevTools needed) ---------------- */
+function showPageError(msg) {
+  const banner = document.getElementById('error-banner');
+  banner.style.display = 'block';
+  banner.textContent = '⚠ ' + msg;
+}
+window.addEventListener('error', e => showPageError('Script error: ' + e.message));
+
 /* ---------------- Password gate ---------------- */
 (function checkPassword() {
   const entered = prompt('Enter password to access the Manual Record Editor:');
@@ -138,10 +147,14 @@
 })();
 
 /* ---------------- Supabase setup ---------------- */
-/* Paste the same URL / anon key used in your other pages (client_form.html, transaction_entry.html, etc.) */
-const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
+let sb;
+try {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} catch (e) {
+  showPageError('Could not connect to Supabase: ' + e.message);
+}
 
 /* ---------------- Field definitions ---------------- */
 // type: text | number | date | boolean | textarea-readonly | readonly
@@ -226,7 +239,13 @@ document.getElementById('btn-find-client').addEventListener('click', async () =>
   if (lastName) query = query.ilike('last_name', `%${lastName}%`);
   query = query.order('last_name', { ascending: true }).order('first_name', { ascending: true });
 
-  const { data, error } = await query;
+  let data, error;
+  try {
+    ({ data, error } = await query);
+  } catch (e) {
+    showPageError('Client search failed: ' + e.message);
+    return;
+  }
 
   if (error) {
     searchStatus.textContent = 'Client search error: ' + error.message;
