@@ -66,13 +66,32 @@
     </div>
 
     <div class="menu-item">
-      <a class="menu-btn" href="transaction_entry.html">
-        <span class="menu-icon">📝</span>
-        <span class="menu-text">
-          <span class="menu-label">Transaction Entry</span>
-          <span class="menu-desc">Record new policy sales and commissions</span>
-        </span>
-      </a>
+      <div class="menu-btn expandable" onclick="toggleMenu('txn')">
+        <div class="menu-btn-left">
+          <span class="menu-icon">📝</span>
+          <span class="menu-text">
+            <span class="menu-label">Transaction Entry</span>
+            <span class="menu-desc">Record new sales or edit existing transaction records</span>
+          </span>
+        </div>
+        <span class="menu-arrow" id="arrow-txn">▶</span>
+      </div>
+      <div class="sub-menu" id="sub-txn">
+        <a class="sub-item" href="transaction_entry.html">
+          <span class="sub-icon">🆕</span>
+          <span class="sub-text">
+            <span class="sub-label">New Transaction Entry</span>
+            <span class="sub-desc">Record new policy sales and commissions</span>
+          </span>
+        </a>
+        <a class="sub-item" href="manual_record_editor.html">
+          <span class="sub-icon">✏️</span>
+          <span class="sub-text">
+            <span class="sub-label">Edit Existing Transaction</span>
+            <span class="sub-desc">Search and edit an existing transaction record — password protected</span>
+          </span>
+        </a>
+      </div>
     </div>
 
     <div class="menu-item">
