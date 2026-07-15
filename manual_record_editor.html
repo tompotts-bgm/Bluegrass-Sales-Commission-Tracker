@@ -47,7 +47,7 @@
 </style>
 </head>
 <body>
-<div class="container">
+<div class="container" id="app-container" style="display:none;">
   <h1>Manual Record Editor</h1>
   <p class="sub">Search for a client's transaction rows by name and record type, then step through and edit them one at a time.</p>
 
@@ -98,6 +98,17 @@
 </div>
 
 <script>
+/* ---------------- Password gate ---------------- */
+(function checkPassword() {
+  const entered = prompt('Enter password to access the Manual Record Editor:');
+  if (entered !== 'Pottsie') {
+    alert('Incorrect password.');
+    window.location.href = 'index.html';
+    return;
+  }
+  document.getElementById('app-container').style.display = 'block';
+})();
+
 /* ---------------- Supabase setup ---------------- */
 /* Paste the same URL / anon key used in your other pages (client_form.html, transaction_entry.html, etc.) */
 const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';
