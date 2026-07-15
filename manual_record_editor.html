@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual Record Editor</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; color: #222; background: #eef7e8; padding: 2rem; }
+  .container { max-width: 900px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 2rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; color: #2B4899; font-family: Georgia, serif; }
+  p.sub { font-size: 13px; color: #666; margin-bottom: 1.5rem; }
+
+  /* ---- Search screen ---- */
+  #search-screen .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  label { display: block; font-size: 12px; font-weight: 600; color: #444; margin-bottom: 4px; }
+  input[type=text], input[type=number], input[type=date], select, textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; font-family: Arial, sans-serif;
+  }
+  input:disabled, textarea:disabled { background: #f0f0f0; color: #777; }
+  #search-status { font-size: 13px; color: #b71c1c; margin: 10px 0; min-height: 18px; }
+
+  /* ---- Buttons ---- */
+  button { font-size: 13px; padding: 10px 20px; border-radius: 7px; border: 1px solid #ccc; background: #fff; color: #333; cursor: pointer; font-weight: 600; margin-right: 8px; margin-top: 8px; }
+  button:hover { background: #f0f0f0; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.primary { background: #2B4899; color: #fff; border-color: #2B4899; }
+  button.primary:hover { background: #21397a; }
+  button.green { background: #6DB33F; color: #fff; border-color: #6DB33F; }
+  button.green:hover { background: #5a9633; }
+  button.danger { background: #fff; color: #b71c1c; border-color: #b71c1c; }
+  button.danger:hover { background: #fdecea; }
+
+  /* ---- Editor screen ---- */
+  #editor-screen { display: none; }
+  #position-indicator { font-size: 14px; font-weight: 700; color: #2B4899; margin-bottom: 4px; }
+  #nav-row { margin-bottom: 16px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin-bottom: 1.5rem; }
+  .form-field.full { grid-column: 1 / -1; }
+  .readonly-tag { font-size: 10px; color: #999; font-weight: normal; margin-left: 4px; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .checkbox-row input { width: auto; }
+  #save-message { font-size: 14px; font-weight: 700; color: #6DB33F; margin: 10px 0; min-height: 20px; }
+  hr.section-divider { border: none; border-top: 1px solid #eee; margin: 1rem 0; }
+  .button-row { border-top: 1px solid #eee; padding-top: 1rem; margin-top: 1rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Manual Record Editor</h1>
+  <p class="sub">Search for a client's transaction rows by name and record type, then step through and edit them one at a time.</p>
+
+  <!-- ================= SEARCH SCREEN ================= -->
+  <div id="search-screen">
+    <div class="field-row">
+      <div>
+        <label>First Name</label>
+        <input type="text" id="q-first-name" placeholder="e.g. John">
+      </div>
+      <div>
+        <label>Last Name</label>
+        <input type="text" id="q-last-name" placeholder="e.g. Smith">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="full" style="grid-column: 1 / -1;">
+        <label>Record Type</label>
+        <select id="q-record-type">
+          <option value="originating_commission">Originating Commission</option>
+          <option value="monthly_renewal">Monthly Renewal</option>
+          <option value="originating_override">Originating Override</option>
+          <option value="monthly_override">Monthly Override</option>
+        </select>
+      </div>
+    </div>
+    <button class="primary" id="btn-search">Search</button>
+    <div id="search-status"></div>
+  </div>
+
+  <!-- ================= EDITOR SCREEN ================= -->
+  <div id="editor-screen">
+    <div id="position-indicator">Record 1 of 1</div>
+    <div id="nav-row">
+      <button id="btn-prev">&larr; Previous</button>
+      <button id="btn-next">Next &rarr;</button>
+    </div>
+    <div id="save-message"></div>
+
+    <div class="form-grid" id="form-grid"><!-- populated by JS --></div>
+
+    <div class="button-row">
+      <button class="green" id="btn-save">Save</button>
+      <button class="primary" id="btn-save-exit">Save and Exit</button>
+      <button class="danger" id="btn-exit-nosave">Exit &ndash; No Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- Supabase setup ---------------- */
+/* Paste the same URL / anon key used in your other pages (client_form.html, transaction_entry.html, etc.) */
+const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ---------------- Field definitions ---------------- */
+// type: text | number | date | boolean | textarea-readonly | readonly
+const FIELDS = [
+  { key: 'id',                     label: 'ID',                        type: 'readonly' },
+  { key: 'client_id',              label: 'Client ID',                 type: 'readonly' },
+  { key: 'first_name',             label: 'First Name',                type: 'text' },
+  { key: 'last_name',              label: 'Last Name',                 type: 'text' },
+  { key: 'address',                label: 'Address',                   type: 'text' },
+  { key: 'city',                   label: 'City',                      type: 'text' },
+  { key: 'state',                  label: 'State',                     type: 'text' },
+  { key: 'zip',                    label: 'Zip',                       type: 'text' },
+  { key: 'policy_status',          label: 'Policy Status',             type: 'text' },
+  { key: 'broker',                 label: 'Broker',                    type: 'text' },
+  { key: 'company',                label: 'Company / Carrier',         type: 'text' },
+  { key: 'product_type',           label: 'Product Type',              type: 'text' },
+  { key: 'record_type',            label: 'Record Type',               type: 'record_type' },
+  { key: 'election_period',        label: 'Election Period',           type: 'text' },
+  { key: 'new_to_medicare',        label: 'New to Medicare',           type: 'text' },
+  { key: 'new_client',             label: 'New Client',                type: 'text' },
+  { key: 'existing_client',        label: 'Existing Client',           type: 'text' },
+  { key: 'date_written',           label: 'Date Written',              type: 'date' },
+  { key: 'effective_date',         label: 'Effective Date',            type: 'date' },
+  { key: 'renewal_start_date',     label: 'Renewal Start Date',        type: 'date' },
+  { key: 'orig_commission',        label: 'Originating Commission',    type: 'number' },
+  { key: 'monthly_renewal',        label: 'Monthly Renewal',           type: 'number' },
+  { key: 'purchase_override',      label: 'Purchase Override',         type: 'number' },
+  { key: 'monthly_override',       label: 'Monthly Override',          type: 'number' },
+  { key: 'commission_matched',     label: 'Commission Matched',        type: 'boolean' },
+  { key: 'commission_matched_date',label: 'Commission Matched Date',   type: 'date' },
+  { key: 'matched_commission_id',  label: 'Matched Commission ID',     type: 'text' },
+  { key: 'commission_records',     label: 'Commission Records (JSON)', type: 'textarea-readonly' },
+  { key: 'created_at',             label: 'Created At',                type: 'readonly' },
+  { key: 'updated_at',             label: 'Updated At',                type: 'readonly' },
+];
+
+const READONLY_TYPES = ['readonly', 'textarea-readonly'];
+
+/* ---------------- State ---------------- */
+let resultSet = [];
+let currentIndex = 0;
+let formDirty = false;
+
+/* ---------------- DOM refs ---------------- */
+const searchScreen = document.getElementById('search-screen');
+const editorScreen = document.getElementById('editor-screen');
+const searchStatus = document.getElementById('search-status');
+const positionIndicator = document.getElementById('position-indicator');
+const formGrid = document.getElementById('form-grid');
+const saveMessage = document.getElementById('save-message');
+const btnPrev = document.getElementById('btn-prev');
+const btnNext = document.getElementById('btn-next');
+
+/* ---------------- Search ---------------- */
+document.getElementById('btn-search').addEventListener('click', async () => {
+  const firstName = document.getElementById('q-first-name').value.trim();
+  const lastName = document.getElementById('q-last-name').value.trim();
+  const recordType = document.getElementById('q-record-type').value;
+
+  searchStatus.textContent = 'Searching...';
+  searchStatus.style.color = '#666';
+
+  let query = sb.from('transactions').select('*').eq('record_type', recordType);
+  if (firstName) query = query.ilike('first_name', `%${firstName}%`);
+  if (lastName) query = query.ilike('last_name', `%${lastName}%`);
+  query = query.order('effective_date', { ascending: true, nullsFirst: false });
+
+  const { data, error } = await query;
+
+  if (error) {
+    searchStatus.textContent = 'Search error: ' + error.message;
+    searchStatus.style.color = '#b71c1c';
+    return;
+  }
+  if (!data || data.length === 0) {
+    searchStatus.textContent = 'No matching records found.';
+    searchStatus.style.color = '#b71c1c';
+    return;
+  }
+
+  resultSet = data;
+  currentIndex = 0;
+  searchStatus.textContent = '';
+  showEditor();
+});
+
+/* ---------------- Editor rendering ---------------- */
+function showEditor() {
+  searchScreen.style.display = 'none';
+  editorScreen.style.display = 'block';
+  renderRecord();
+}
+
+function backToSearch() {
+  resultSet = [];
+  currentIndex = 0;
+  formDirty = false;
+  saveMessage.textContent = '';
+  document.getElementById('q-first-name').value = '';
+  document.getElementById('q-last-name').value = '';
+  searchStatus.textContent = '';
+  editorScreen.style.display = 'none';
+  searchScreen.style.display = 'block';
+}
+
+function renderRecord() {
+  const record = resultSet[currentIndex];
+  positionIndicator.textContent = `Record ${currentIndex + 1} of ${resultSet.length}`;
+  saveMessage.textContent = '';
+  formDirty = false;
+
+  formGrid.innerHTML = '';
+  FIELDS.forEach(f => {
+    const wrap = document.createElement('div');
+    wrap.className = 'form-field';
+
+    const label = document.createElement('label');
+    label.textContent = f.label + (READONLY_TYPES.includes(f.type) ? '' : '');
+    if (READONLY_TYPES.includes(f.type)) {
+      const tag = document.createElement('span');
+      tag.className = 'readonly-tag';
+      tag.textContent = '(read only)';
+      label.appendChild(tag);
+    }
+    wrap.appendChild(label);
+
+    const val = record[f.key];
+
+    if (f.type === 'boolean') {
+      const row = document.createElement('div');
+      row.className = 'checkbox-row';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.id = 'f-' + f.key;
+      input.checked = !!val;
+      input.addEventListener('change', () => formDirty = true);
+      row.appendChild(input);
+      wrap.appendChild(row);
+    } else if (f.type === 'record_type') {
+      const select = document.createElement('select');
+      select.id = 'f-' + f.key;
+      ['originating_commission','monthly_renewal','originating_override','monthly_override'].forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt; o.textContent = opt;
+        if (val === opt) o.selected = true;
+        select.appendChild(o);
+      });
+      select.addEventListener('change', () => formDirty = true);
+      wrap.appendChild(select);
+    } else if (f.type === 'textarea-readonly') {
+      wrap.classList.add('full');
+      const ta = document.createElement('textarea');
+      ta.id = 'f-' + f.key;
+      ta.rows = 4;
+      ta.disabled = true;
+      ta.value = val ? JSON.stringify(val, null, 2) : '';
+      wrap.appendChild(ta);
+    } else if (f.type === 'readonly') {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.id = 'f-' + f.key;
+      input.disabled = true;
+      input.value = val ?? '';
+      wrap.appendChild(input);
+    } else {
+      const input = document.createElement('input');
+      input.type = f.type === 'number' ? 'number' : (f.type === 'date' ? 'date' : 'text');
+      if (f.type === 'number') input.step = '0.01';
+      input.id = 'f-' + f.key;
+      input.value = val ?? '';
+      input.addEventListener('input', () => formDirty = true);
+      wrap.appendChild(input);
+    }
+
+    formGrid.appendChild(wrap);
+  });
+
+  btnPrev.disabled = currentIndex === 0;
+  btnNext.disabled = currentIndex === resultSet.length - 1;
+}
+
+function collectEditableValues() {
+  const updates = {};
+  FIELDS.forEach(f => {
+    if (READONLY_TYPES.includes(f.type)) return;
+    const el = document.getElementById('f-' + f.key);
+    if (!el) return;
+    if (f.type === 'boolean') {
+      updates[f.key] = el.checked;
+    } else if (f.type === 'number') {
+      updates[f.key] = el.value === '' ? null : parseFloat(el.value);
+    } else if (f.type === 'date') {
+      updates[f.key] = el.value === '' ? null : el.value;
+    } else {
+      updates[f.key] = el.value === '' ? null : el.value;
+    }
+  });
+  return updates;
+}
+
+/* ---------------- Navigation ---------------- */
+btnPrev.addEventListener('click', () => {
+  if (formDirty && !confirm('You have unsaved changes on this record. Discard them and move to the previous record?')) return;
+  currentIndex--;
+  renderRecord();
+});
+btnNext.addEventListener('click', () => {
+  if (formDirty && !confirm('You have unsaved changes on this record. Discard them and move to the next record?')) return;
+  currentIndex++;
+  renderRecord();
+});
+
+/* ---------------- Save actions ---------------- */
+async function saveCurrentRecord() {
+  const record = resultSet[currentIndex];
+  const updates = collectEditableValues();
+  saveMessage.textContent = 'Saving Record';
+  const { error } = await sb.from('transactions').update(updates).eq('id', record.id);
+  if (error) {
+    saveMessage.textContent = 'Save failed: ' + error.message;
+    saveMessage.style.color = '#b71c1c';
+    return false;
+  }
+  saveMessage.style.color = '#6DB33F';
+  Object.assign(resultSet[currentIndex], updates);
+  formDirty = false;
+  return true;
+}
+
+document.getElementById('btn-save').addEventListener('click', async () => {
+  const ok = await saveCurrentRecord();
+  if (ok) backToSearch();
+});
+
+document.getElementById('btn-save-exit').addEventListener('click', async () => {
+  const ok = await saveCurrentRecord();
+  if (ok) window.location.href = 'index.html';
+});
+
+document.getElementById('btn-exit-nosave').addEventListener('click', () => {
+  if (formDirty && !confirm('Discard unsaved changes and exit?')) return;
+  window.location.href = 'index.html';
+});
+</script>
+</body>
+</html>
