@@ -259,7 +259,8 @@ footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; pad
           <option value="contact_method">Method of Contact</option>
         </select>
       </div>
-      <button class="secondary" id="btn-create-chart">Create Chart</button>
+      <button class="secondary" id="btn-create-chart">Create Bar Graph</button>
+      <button class="secondary" id="btn-create-pie-chart">Create Pie Chart</button>
     </div>
     <div id="dynamic-chart-container">
       <p class="chart-note">Pick a field and click Create Chart to see a breakdown.</p>
@@ -489,7 +490,38 @@ const CHART_FIELD_FILTER_IDS = {
 const CHART_FIELD_LABELS = { status: 'Status', city: 'City', state: 'State', county: 'County', contact_method: 'Method of Contact' };
 let dynamicChart = null;
 
-function createDynamicChart() {
+const PIE_COLORS = ['#2B4899', '#6DB33F', '#f57f17', '#8e44ad', '#e74c3c', '#16a085', '#f39c12', '#2980b9', '#b0bec5'];
+
+// Returns an array of [label, count] pairs for the given field, using current filteredData.
+function getFieldCounts(field) {
+  if (field === 'status') {
+    const counts = { C: 0, P: 0, F: 0, N: 0 };
+    filteredData.forEach(function(r) { if (counts.hasOwnProperty(r.status)) counts[r.status]++; });
+    return [
+      ['Client', counts.C],
+      ['Prospect', counts.P],
+      ['Former Client', counts.F],
+      ['Not a Prospect', counts.N]
+    ];
+  }
+  if (field === 'contact_method') {
+    const counts = {};
+    Object.keys(CONTACT_LABELS).forEach(function(k) { counts[CONTACT_LABELS[k]] = 0; });
+    filteredData.forEach(function(r) {
+      Object.keys(CONTACT_LABELS).forEach(function(k) { if (r[k]) counts[CONTACT_LABELS[k]]++; });
+    });
+    return Object.entries(counts);
+  }
+  // Generic: city / state / county
+  const counts = {};
+  filteredData.forEach(function(r) {
+    const v = r[field] || 'Unspecified';
+    counts[v] = (counts[v] || 0) + 1;
+  });
+  return Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; });
+}
+
+function createDynamicChart(chartType) {
   applyFilters(); // use current filter selections, independent of whether Run Report was clicked
   const field = document.getElementById('chart-field').value;
   const filterId = CHART_FIELD_FILTER_IDS[field];
@@ -514,24 +546,71 @@ function createDynamicChart() {
     return;
   }
 
-  if (field === 'contact_method') {
-    container.innerHTML = '<div class="chart-wrap-bar"><canvas id="dynamic-chart-canvas"></canvas></div>';
-    renderContactMethodChart();
-  } else if (field === 'status') {
+  const entries = getFieldCounts(field);
+
+  if (chartType === 'pie') {
     container.innerHTML = '<div class="chart-wrap"><canvas id="dynamic-chart-canvas"></canvas></div>';
-    renderStatusPieChart();
+    renderPieChart(entries);
+  } else if (field === 'contact_method') {
+    container.innerHTML = '<div class="chart-wrap-bar"><canvas id="dynamic-chart-canvas"></canvas></div>';
+    renderBarChart(field, entries);
   } else {
     container.innerHTML = '<div class="chart-wrap-vbar"><canvas id="dynamic-chart-canvas"></canvas></div>';
-    renderVerticalBarChart(field);
+    renderBarChart(field, entries);
   }
 }
 
-function renderStatusPieChart() {
-  const counts = { C: 0, P: 0, F: 0, N: 0 };
-  filteredData.forEach(function(r) { if (counts.hasOwnProperty(r.status)) counts[r.status]++; });
-  const labels = ['Client', 'Prospect', 'Former Client', 'Not a Prospect'];
-  const data = [counts.C, counts.P, counts.F, counts.N];
-  const colors = ['#2B4899', '#6DB33F', '#f57f17', '#b0bec5'];
+function renderBarChart(field, entries) {
+  const labels = entries.map(function(e) { return e[0]; });
+  const data = entries.map(function(e) { return e[1]; });
+  const ctx = document.getElementById('dynamic-chart-canvas');
+
+  if (field === 'contact_method') {
+    dynamicChart = new Chart(ctx, {
+      type: 'bar',
+      data: { labels: labels, datasets: [{ label: 'Clients', data: data, backgroundColor: '#2B4899' }] },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+      }
+    });
+    return;
+  }
+
+  dynamicChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ label: 'Clients', data: data, backgroundColor: '#2B4899' }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0 } },
+        x: { ticks: { autoSkip: false, maxRotation: 60, minRotation: 0 } }
+      }
+    }
+  });
+}
+
+// Generic pie renderer for any field. Caps to the top 8 slices by count,
+// combining anything beyond that into a single "Other" slice.
+function renderPieChart(entries) {
+  const sorted = entries.slice().sort(function(a, b) { return b[1] - a[1]; });
+  let labels, data;
+  if (sorted.length > 8) {
+    const top8 = sorted.slice(0, 8);
+    const rest = sorted.slice(8);
+    const otherSum = rest.reduce(function(sum, e) { return sum + e[1]; }, 0);
+    labels = top8.map(function(e) { return e[0]; }).concat(['Other']);
+    data = top8.map(function(e) { return e[1]; }).concat([otherSum]);
+  } else {
+    labels = sorted.map(function(e) { return e[0]; });
+    data = sorted.map(function(e) { return e[1]; });
+  }
+  const colors = labels.map(function(_, i) { return PIE_COLORS[i % PIE_COLORS.length]; });
 
   const ctx = document.getElementById('dynamic-chart-canvas');
   dynamicChart = new Chart(ctx, {
@@ -552,56 +631,6 @@ function renderStatusPieChart() {
           }
         }
       }
-    }
-  });
-}
-
-function renderVerticalBarChart(field) {
-  const counts = {};
-  filteredData.forEach(function(r) {
-    const v = r[field] || 'Unspecified';
-    counts[v] = (counts[v] || 0) + 1;
-  });
-  // Sort by count descending so the most common values read first
-  const entries = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; });
-  const labels = entries.map(function(e) { return e[0]; });
-  const data = entries.map(function(e) { return e[1]; });
-
-  const ctx = document.getElementById('dynamic-chart-canvas');
-  dynamicChart = new Chart(ctx, {
-    type: 'bar',
-    data: { labels: labels, datasets: [{ label: 'Clients', data: data, backgroundColor: '#2B4899' }] },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, ticks: { precision: 0 } },
-        x: { ticks: { autoSkip: false, maxRotation: 60, minRotation: 0 } }
-      }
-    }
-  });
-}
-
-function renderContactMethodChart() {
-  const counts = {};
-  Object.keys(CONTACT_LABELS).forEach(function(k) { counts[CONTACT_LABELS[k]] = 0; });
-  filteredData.forEach(function(r) {
-    Object.keys(CONTACT_LABELS).forEach(function(k) { if (r[k]) counts[CONTACT_LABELS[k]]++; });
-  });
-  const labels = Object.keys(counts);
-  const data = labels.map(function(l) { return counts[l]; });
-
-  const ctx = document.getElementById('dynamic-chart-canvas');
-  dynamicChart = new Chart(ctx, {
-    type: 'bar',
-    data: { labels: labels, datasets: [{ label: 'Clients', data: data, backgroundColor: '#2B4899' }] },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
     }
   });
 }
@@ -704,7 +733,8 @@ function exportExcel() {
 
 // ── Events ────────────────────────────────────────────────────────
 document.getElementById('btn-run').addEventListener('click', runReport);
-document.getElementById('btn-create-chart').addEventListener('click', createDynamicChart);
+document.getElementById('btn-create-chart').addEventListener('click', function() { createDynamicChart('bar'); });
+document.getElementById('btn-create-pie-chart').addEventListener('click', function() { createDynamicChart('pie'); });
 document.getElementById('btn-export').addEventListener('click', exportExcel);
 document.getElementById('btn-reset').addEventListener('click', function() {
   ['filter-client','filter-zip','filter-dob-from','filter-dob-to','filter-since-from','filter-since-to'].forEach(function(id){
