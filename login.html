@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bluegrass Medicare — Login</title>
+  <script src="auth.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #d8eecb; font-family: Georgia, serif; padding: 30px 16px; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .wrap { max-width: 400px; width: 100%; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.10); }
+    .header { background: #2B4899; padding: 22px 24px; text-align: center; }
+    .header-title { color: #fff; font-size: 18px; font-weight: bold; font-family: Georgia, serif; letter-spacing: 0.02em; }
+    .header-sub { color: #6DB33F; font-size: 12px; font-family: Arial, sans-serif; margin-top: 4px; }
+    .body { background: #eef7e8; border: 1px solid #c5dfa8; border-top: none; border-radius: 0 0 10px 10px; padding: 28px 26px 30px; font-family: Arial, sans-serif; }
+    label { display: block; font-size: 12px; font-weight: 600; color: #444; margin-bottom: 4px; }
+    input[type=email], input[type=password] { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; margin-bottom: 16px; font-family: Arial, sans-serif; }
+    button { width: 100%; font-size: 14px; padding: 11px 18px; border-radius: 7px; border: none; background: #2B4899; color: #fff; cursor: pointer; font-weight: 600; }
+    button:hover { background: #21397a; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    #login-error { font-size: 13px; color: #b71c1c; margin-top: 12px; min-height: 18px; text-align: center; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="header-title">Bluegrass Medicare</div>
+    <div class="header-sub">Commission Tracker — Sign In</div>
+  </div>
+  <div class="body">
+    <label>Email</label>
+    <input type="email" id="login-email" autocomplete="username">
+    <label>Password</label>
+    <input type="password" id="login-password" autocomplete="current-password">
+    <button id="btn-login">Log In</button>
+    <div id="login-error"></div>
+  </div>
+</div>
+
+<script>
+// If we were redirected here due to inactivity timeout, say so.
+const params = new URLSearchParams(window.location.search);
+if (params.get('expired')) {
+  document.getElementById('login-error').textContent = 'Your session expired due to inactivity. Please log in again.';
+}
+
+// If already logged in with a valid session, skip straight to the menu.
+(function () {
+  const s = getSession();
+  if (s && s.access_token && (Date.now() - (s.last_activity || 0) <= INACTIVITY_LIMIT_MS)) {
+    window.location.href = 'index.html';
+  }
+})();
+
+const btn = document.getElementById('btn-login');
+const errDiv = document.getElementById('login-error');
+
+async function attemptLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  errDiv.textContent = '';
+  if (!email || !password) {
+    errDiv.textContent = 'Enter both email and password.';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Logging in...';
+  try {
+    await login(email, password);
+    window.location.href = 'index.html';
+  } catch (e) {
+    errDiv.textContent = e.message;
+    btn.disabled = false;
+    btn.textContent = 'Log In';
+  }
+}
+
+btn.addEventListener('click', attemptLogin);
+document.getElementById('login-password').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') attemptLogin();
+});
+</script>
+</body>
+</html>
