@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Manual Record Editor</title>
+<script src="auth.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; color: #222; background: #eef7e8; padding: 2rem; }
@@ -65,7 +66,7 @@
 </head>
 <body>
 <div id="error-banner" style="display:none; max-width:900px; margin:0 auto 12px; background:#fdecea; border:1px solid #b71c1c; color:#b71c1c; border-radius:8px; padding:12px 16px; font-family:Arial, sans-serif; font-size:13px; font-weight:600;"></div>
-<div class="container" id="app-container" style="display:none;">
+<div class="container" id="app-container">
   <h1>Manual Record Editor</h1>
   <p class="sub">Search for a client's transaction rows by name and record type, then step through and edit them one at a time.</p>
 
@@ -130,6 +131,10 @@
 </div>
 
 <script>
+  if (!checkSession()) {
+    throw new Error('Not authenticated — redirecting to login.');
+  }
+
 /* ---------------- On-page error display (no DevTools needed) ---------------- */
 function showPageError(msg) {
   const banner = document.getElementById('error-banner');
@@ -137,17 +142,6 @@ function showPageError(msg) {
   banner.textContent = '⚠ ' + msg;
 }
 window.addEventListener('error', e => showPageError('Script error: ' + e.message));
-
-/* ---------------- Password gate ---------------- */
-(function checkPassword() {
-  const entered = prompt('Enter password to access the Manual Record Editor:');
-  if (entered !== 'Pottsie') {
-    alert('Incorrect password.');
-    window.location.href = 'index.html';
-    return;
-  }
-  document.getElementById('app-container').style.display = 'block';
-})();
 
 /* ---------------- Supabase setup ---------------- */
 const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
