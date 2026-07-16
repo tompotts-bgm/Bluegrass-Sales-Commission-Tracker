@@ -4,8 +4,8 @@
    <script src="auth.js"></script>
    ============================================================ */
 
-const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
+const AUTH_SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
+const AUTH_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
 
 const SESSION_KEY = 'bgm_session';
 const INACTIVITY_LIMIT_MS = 15 * 60 * 60 * 1000; // 15 hours
@@ -68,9 +68,9 @@ function checkSession() {
  * auth response.
  */
 async function login(email, password) {
-  const resp = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+  const resp = await fetch(`${AUTH_SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+    headers: { 'apikey': AUTH_SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: email, password: password })
   });
   const data = await resp.json();
