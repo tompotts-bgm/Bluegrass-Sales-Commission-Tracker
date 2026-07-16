@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Commission Auto-Match</title>
+<script src="auth.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: Arial, sans-serif; color: #222; background: #f4f6f9; padding: 2rem; }
@@ -233,6 +234,10 @@ footer { margin-top: 2rem; font-size: 12px; color: #aaa; text-align: center; bor
 </div>
 
 <script>
+  if (!checkSession()) {
+    throw new Error('Not authenticated — redirecting to login.');
+  }
+
   const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
   const HEADERS = {
