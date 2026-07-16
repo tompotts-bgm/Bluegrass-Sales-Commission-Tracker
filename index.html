@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bluegrass Medicare — Commission Tracker</title>
+  <script src="auth.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #d8eecb; font-family: Georgia, serif; padding: 30px 16px; min-height: 100vh; }
@@ -39,6 +40,8 @@
     .sub-desc { font-size: 11px; color: #777; }
     .sub-badge { font-size: 10px; background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; border-radius: 4px; padding: 2px 7px; white-space: nowrap; }
     .menu-divider { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #999; font-family: Arial, sans-serif; padding: 14px 4px 6px; }
+    .logout-row { text-align: right; margin-bottom: 6px; }
+    .logout-btn { font-size: 11px; color: #b71c1c; background: none; border: none; cursor: pointer; font-family: Arial, sans-serif; text-decoration: underline; }
     footer { margin-top: 2rem; font-size: 12px; color: #888; text-align: center; font-family: Arial, sans-serif; }
   </style>
 </head>
@@ -51,6 +54,7 @@
     </div>
   </div>
   <div class="body">
+    <div class="logout-row"><button class="logout-btn" onclick="logout()">Log Out</button></div>
     <p class="menu-intro">Select a module below to get started.</p>
 
     <div class="menu-divider">Data Entry</div>
@@ -229,6 +233,11 @@
 <footer>Bluegrass Medicare &nbsp;·&nbsp; Commission Tracker &nbsp;·&nbsp; v1.1</footer>
 
 <script>
+  if (!checkSession()) {
+    // checkSession() has already redirected to login.html; stop here.
+    throw new Error('Not authenticated — redirecting to login.');
+  }
+
   function toggleMenu(id) {
     const sub   = document.getElementById('sub-' + id);
     const arrow = document.getElementById('arrow-' + id);
