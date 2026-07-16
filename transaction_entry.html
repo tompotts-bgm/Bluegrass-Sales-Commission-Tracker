@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bluegrass Medicare — New Policy Transaction</title>
+  <script src="auth.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #d8eecb; font-family: Georgia, serif; padding: 30px 16px; }
@@ -308,6 +309,10 @@
 </div>
 
 <script>
+  if (!checkSession()) {
+    throw new Error('Not authenticated — redirecting to login.');
+  }
+
   // ── SUPABASE ─────────────────────────────────────────────────────
   const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
@@ -326,7 +331,6 @@
       const rows = await resp.json();
       console.log('[CommRates] Loaded', rows.length, 'rows from Supabase:', rows);
 
-      // Build COMM_TABLE structure: { year: { mapd: { Carrier: {...} }, supp: { Carrier: rate } } }
       rows.forEach(r => {
         if (!COMM_TABLE[r.year]) COMM_TABLE[r.year] = { mapd: {}, supp: {} };
         if (r.product_type === 'MSUP') {
@@ -345,7 +349,6 @@
     } catch(e) {
       console.error('Commission rates load failed:', e.message);
     }
-    // ── Show loaded rates on screen for verification ──────────
     showRateDebug();
   }
 
@@ -380,7 +383,7 @@
   let selectedClientId = null;
   let searchTimer = null;
   const ynState = {};
-  let origCommissionManual = false; // true when user typed a manual override
+  let origCommissionManual = false;
 
   // ── INIT ──────────────────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', async () => {
@@ -403,18 +406,15 @@
     const isAEPorOEP = (ep.value === 'AEP' || ep.value === 'OEP');
     const isOther    = ep.value === 'Other';
 
-    // Disable New to Medicare for AEP / OEP / Other
     document.getElementById('newMedicareY').classList.toggle('disabled', isAEPorOEP || isOther);
     if ((isAEPorOEP || isOther) && ynState['newMedicare'] !== 'N') setYN('newMedicare','N');
 
-    // AEP: force effective date to Jan 1 of next written year
     if (ep.value === 'AEP') {
       const written = document.getElementById('dateWritten').value;
       const yr = written ? new Date(written+'T00:00:00').getFullYear()+1 : new Date().getFullYear()+1;
       document.getElementById('effectiveDate').value = `${yr}-01-01`;
     }
 
-    // Other: clear the originating commission field for manual entry
     if (isOther) {
       document.getElementById('origCommission').value = '';
       document.getElementById('origCommission').classList.add('manual-entry');
@@ -449,7 +449,7 @@
     const parts = raw.split('.'); if (parts.length > 2) raw = parts[0]+'.'+parts.slice(1).join('');
     input.value = raw;
     origCommissionManual = true;
-    renderSidePanel(calcCommissions()); // update panel with manual value shown
+    renderSidePanel(calcCommissions());
   }
 
   function formatCommissionBlur(input) {
@@ -458,7 +458,6 @@
   }
 
   function getOrigCommissionValue() {
-    // Returns the numeric value from the originating commission field (manual or auto)
     const raw = document.getElementById('origCommission').value.replace(/[$,]/g,'');
     const num = parseFloat(raw);
     return isNaN(num) ? null : num;
@@ -487,7 +486,6 @@
     const writtenYear = written ? new Date(written+'T00:00:00').getFullYear() : effYear;
     const isNewMed    = ynState['newMedicare'] === 'Y';
 
-    // ── OTHER (non-Medicare) ──────────────────────────────────────
     if (epVal === 'Other') {
       const manualAmt = getOrigCommissionValue();
       return {
@@ -499,7 +497,6 @@
       };
     }
 
-    // ── SUPPLEMENT ────────────────────────────────────────────────
     if (ptVal === 'Supplement') {
       const raw     = document.getElementById('monthlyPremium').value.replace(/[$,]/g,'');
       const monthly = parseFloat(raw);
@@ -516,7 +513,6 @@
       };
     }
 
-    // ── MAPD ──────────────────────────────────────────────────────
     if (ptVal !== 'MAPD') return null;
 
     const yearData = COMM_TABLE[effYear];
@@ -538,26 +534,22 @@
       origNote         = `$${monthlyRenewal.toFixed(2)} × ${prorated} months`;
       renewalStartYear = writtenYear + 1;
     } else {
-      // New to Medicare
       const proratedComm = monthlyRenewal * prorated;
       origCommission     = renewal + proratedComm;
       origNote           = `$${renewal.toFixed(2)} + ($${monthlyRenewal.toFixed(2)} × ${prorated} mo)`;
       renewalStartYear   = writtenYear + 2;
     }
 
-    // If user manually overrode, use their value
     const displayOrig = origCommissionManual && getOrigCommissionValue() !== null
       ? getOrigCommissionValue()
       : origCommission;
 
-    // 12 renewal records — orig_commission is null on renewals
     const renewalRecords = [];
     for (let m = 1; m <= 12; m++) {
       const mo = String(m).padStart(2,'0');
       renewalRecords.push({ label:`Renewal ${renewalStartYear}-${mo}`, type:'renewal', date:`${renewalStartYear}-${mo}-01`, orig_commission:null, amount:monthlyRenewal, monthly_renewal:monthlyRenewal, note:'Monthly renewal' });
     }
 
-    // 12 override records (same year as renewals)
     const overrideRecords = [];
     if (monthlyOverride > 0) {
       for (let m = 1; m <= 12; m++) {
@@ -614,7 +606,6 @@
       body.innerHTML = `<div class="sp-error">⚠️ ${result.error}</div>`; return;
     }
 
-    // Client info header
     const clientName = [
       document.getElementById('firstName').value,
       document.getElementById('mi').value ? document.getElementById('mi').value+'.' : '',
@@ -637,7 +628,6 @@
         </div>
       </div>`;
 
-    // ── OTHER ────────────────────────────────────────────────────
     if (result.type === 'other') {
       const amt = result.origCommission !== null ? '$'+result.origCommission.toFixed(2) : 'Enter amount above';
       html += `
@@ -653,7 +643,6 @@
       body.innerHTML = html; return;
     }
 
-    // ── SUPPLEMENT ───────────────────────────────────────────────
     if (result.type === 'supplement') {
       html += `
         <div class="rec-group-label">Originating Commission (1 record)</div>
@@ -674,17 +663,14 @@
       body.innerHTML = html; return;
     }
 
-    // ── MAPD ─────────────────────────────────────────────────────
     if (result.type === 'mapd') {
       const renewalTotal         = result.monthlyRenewal  * 12;
       const overrideMonthlyTotal = result.monthlyOverride * 12;
       const purchaseOverride     = result.purchaseOverride || 0;
       const grandTotal           = result.displayOrig + renewalTotal + purchaseOverride + overrideMonthlyTotal;
       const hasOverrides         = result.monthlyOverride > 0 || purchaseOverride > 0;
-      // 1 originating + 12 renewals + 1 override originating + 12 override monthly = 26
       const totalRecords         = 1 + result.renewalRecords.length + (hasOverrides ? 1 + result.overrideRecords.length : 0);
 
-      // ── Record 1: Originating Commission ─────────────────────
       html += `
         <div class="rec-group-label">Record 1 of ${totalRecords} — Originating Commission</div>
         <div class="rec-card">
@@ -704,7 +690,6 @@
           <div class="rec-card-row"><span class="rck" style="color:#888;font-size:11px;">monthly_override</span><span class="rcv" style="color:#bbb;font-size:11px;">null</span></div>
         </div>`;
 
-      // ── Records 2–13: Monthly Renewals ────────────────────────
       html += `<div class="rec-group-label">Records 2–13 of ${totalRecords} — Monthly Renewals (Jan–Dec ${result.renewalStartYear})</div>
         <div class="rec-card">
           <div class="rec-card-header">
@@ -723,9 +708,7 @@
       });
       html += `</div></div>`;
 
-      // ── Override records ──────────────────────────────────────
       if (hasOverrides) {
-        // Record 14: Override Originating
         html += `<div class="rec-group-label">Record 14 of ${totalRecords} — Override Originating</div>
           <div class="rec-card" style="border-color:#6DB33F;">
             <div class="rec-card-header">
@@ -741,7 +724,6 @@
             <div class="rec-card-row"><span class="rck" style="color:#888;font-size:11px;">monthly_override</span><span class="rcv" style="color:#bbb;font-size:11px;">null</span></div>
           </div>`;
 
-        // Records 15–26: Monthly Overrides
         if (result.overrideRecords.length > 0) {
           html += `<div class="rec-group-label">Records 15–26 of ${totalRecords} — Monthly Overrides (Jan–Dec ${result.renewalStartYear})</div>
             <div class="rec-card" style="border-color:#6DB33F;">
@@ -763,7 +745,6 @@
         }
       }
 
-      // ── Summary ───────────────────────────────────────────────
       html += `
         <div class="rec-summary">
           <div class="rec-summary-row"><span>Originating Commission</span><span>$${result.displayOrig.toFixed(2)}</span></div>
@@ -933,7 +914,6 @@
       commission_records:      result && !result.error ? result.records : [],
     };
 
-    // ── 1 originating commission row ──────────────────────────
     const originatingRow = {
       ...base,
       record_type:       'originating_commission',
@@ -943,7 +923,6 @@
       purchase_override: null,
     };
 
-    // ── 12 monthly renewal rows ────────────────────────────────
     const renewalRows = [];
     if (result && !result.error && result.renewalStartYear) {
       for (let m = 1; m <= 12; m++) {
@@ -960,7 +939,6 @@
       }
     }
 
-    // ── 1 override originating row ─────────────────────────────
     const overrideOriginatingRow = {
       ...base,
       record_type:       'originating_override',
@@ -970,7 +948,6 @@
       purchase_override: PURCHASE_OVERRIDE,
     };
 
-    // ── 12 monthly override rows ───────────────────────────────
     const overrideRows = [];
     if (result && !result.error && result.renewalStartYear) {
       for (let m = 1; m <= 12; m++) {
@@ -989,7 +966,6 @@
 
     const allRows = [originatingRow, ...renewalRows, overrideOriginatingRow, ...overrideRows];
     console.log('[Save] allRows count:', allRows.length, 'renewalRows:', renewalRows.length, 'overrideRows:', overrideRows.length);
-    console.log('[Save] allRows:', JSON.stringify(allRows.map(r => ({ record_type: r.record_type, orig_commission: r.orig_commission, monthly_renewal: r.monthly_renewal, monthly_override: r.monthly_override, purchase_override: r.purchase_override, effective_date: r.effective_date })), null, 2));
 
     showStatus(`Saving ${allRows.length} records…`, false, true);
 
@@ -1047,7 +1023,6 @@
 
   // ── COPY ──────────────────────────────────────────────────────────
   function copyRecord() {
-    // Keep client name/address — clear everything else
     document.getElementById('dateWritten').value = new Date().toISOString().split('T')[0];
     const nd = new Date(); nd.setMonth(nd.getMonth()+1); nd.setDate(1);
     document.getElementById('effectiveDate').value = nd.toISOString().split('T')[0];
