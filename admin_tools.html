@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Tools</title>
+<script src="auth.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: #d8eecb; font-family: Georgia, serif; padding: 30px 16px; min-height: 100vh; }
@@ -16,18 +17,7 @@ body { background: #d8eecb; font-family: Georgia, serif; padding: 30px 16px; min
 .btn-menu:hover { background: rgba(255,255,255,0.25); }
 .body { background: #eef7e8; border: 1px solid #c5dfa8; border-top: none; border-radius: 0 0 10px 10px; padding: 28px 24px; }
 
-/* Password */
-#password-screen { display: block; }
-.pw-label { font-size: 13px; font-family: Arial, sans-serif; color: #555; margin-bottom: 16px; line-height: 1.5; }
-.pw-row { display: flex; gap: 10px; align-items: center; }
-.pw-input { flex: 1; padding: 10px 14px; border: 1px solid #c5dfa8; border-radius: 7px; font-size: 14px; font-family: Arial, sans-serif; outline: none; transition: border-color 0.2s; }
-.pw-input:focus { border-color: #2B4899; box-shadow: 0 0 0 2px rgba(43,72,153,0.15); }
-.btn-unlock { background: #2B4899; color: #fff; border: none; padding: 10px 20px; border-radius: 7px; font-size: 13px; font-family: Arial, sans-serif; font-weight: bold; cursor: pointer; }
-.btn-unlock:hover { background: #1e357a; }
-.pw-error { font-size: 12px; color: #c0392b; font-family: Arial, sans-serif; margin-top: 10px; display: none; }
-
 /* Tools */
-#tools-screen { display: none; }
 .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #999; font-family: Arial, sans-serif; padding: 14px 4px 6px; }
 .tool-card { background: #fff; border: 1px solid #c5dfa8; border-radius: 8px; padding: 16px 18px; margin-bottom: 12px; }
 .tool-card h3 { font-size: 14px; font-weight: 600; color: #1a1a2e; font-family: Arial, sans-serif; margin-bottom: 4px; }
@@ -65,21 +55,11 @@ body { background: #d8eecb; font-family: Georgia, serif; padding: 30px 16px; min
   <div class="header">
     <div class="header-right">
       <div class="header-title">Admin Tools</div>
-      <div class="header-sub">Password protected — authorized use only</div>
+      <div class="header-sub">Backup, restore &amp; delete table data</div>
     </div>
     <a href="index.html" class="btn-menu">← Menu</a>
   </div>
   <div class="body">
-
-    <!-- Password screen -->
-    <div id="password-screen">
-      <p class="pw-label">This area is restricted. Enter the admin password to continue.</p>
-      <div class="pw-row">
-        <input type="password" id="pw-input" class="pw-input" placeholder="Enter password…" />
-        <button class="btn-unlock" onclick="checkPassword()">Unlock</button>
-      </div>
-      <div class="pw-error" id="pw-error">Incorrect password. Please try again.</div>
-    </div>
 
     <!-- Tools screen -->
     <div id="tools-screen">
@@ -143,6 +123,10 @@ body { background: #d8eecb; font-family: Georgia, serif; padding: 30px 16px; min
 </div>
 
 <script>
+  if (!checkSession()) {
+    throw new Error('Not authenticated — redirecting to login.');
+  }
+
 const SUPABASE_URL = 'https://sfxcpayhnqvyanluzhge.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeGNwYXlobnF2eWFubHV6aGdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjg1MjMsImV4cCI6MjA5Mjk0NDUyM30._jUESsqL6JDDWYgZM9jZ13CqkjPXrgNK3ML3Wp2Mu2E';
 const HEADERS = {
@@ -152,23 +136,8 @@ const HEADERS = {
   'Prefer': 'return=minimal'
 };
 
-const PASSWORD = 'Pottsie';
 let pendingTable = null;
 let pendingLabel = null;
-
-// ── Password ──────────────────────────────────────────────────
-function checkPassword() {
-  const val = document.getElementById('pw-input').value;
-  if (val === PASSWORD) {
-    document.getElementById('password-screen').style.display = 'none';
-    document.getElementById('tools-screen').style.display = 'block';
-  } else {
-    document.getElementById('pw-error').style.display = 'block';
-    document.getElementById('pw-input').value = '';
-    document.getElementById('pw-input').focus();
-  }
-}
-document.getElementById('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkPassword(); });
 
 // ── Status helper ─────────────────────────────────────────────
 function setStatus(table, msg, type) {
